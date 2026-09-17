@@ -91,21 +91,43 @@ traces:
       - { domain: 56, name: dbg_mpl_rsp_info1_hit, bits: [5, 4], width: 2, desc: "hit 标志" }
       - { domain: 56, name: dbg_mpl_rsp_info1_res_vld, bits: [3, 0], width: 4, desc: "mpl 返回的三个读请求有效信号" }
 
-      # dbg_stg_tcam_match_rcd0: 6 u32 words (0x050c .. 0x0523)
-      - { domain: 57, name: dbg_stg_tcam_match_rcd0_0, bits: [31, 0], width: 32, desc: "stg tcam match record 0 word 0" }
-      - { domain: 58, name: dbg_stg_tcam_match_rcd0_1, bits: [31, 0], width: 32, desc: "stg tcam match record 0 word 1" }
-      - { domain: 59, name: dbg_stg_tcam_match_rcd0_2, bits: [31, 0], width: 32, desc: "stg tcam match record 0 word 2" }
-      - { domain: 60, name: dbg_stg_tcam_match_rcd0_3, bits: [31, 0], width: 32, desc: "stg tcam match record 0 word 3" }
-      - { domain: 61, name: dbg_stg_tcam_match_rcd0_4, bits: [31, 0], width: 32, desc: "stg tcam match record 0 word 4" }
-      - { domain: 62, name: dbg_stg_tcam_match_rcd0_5, bits: [31, 0], width: 32, desc: "stg tcam match record 0 word 5" }
+      # dbg_stg_tcam_match_rcd0: 6 stages × u32 (0x050c .. 0x0523)：[31:16] key3, [15:0] key2
+      - { domain: 57, name: dbg_stg_tcam_match_rcd0_0_key3, bits: [31, 16], width: 16, desc: "stage0 tcam key3" }
+      - { domain: 57, name: dbg_stg_tcam_match_rcd0_0_key2, bits: [15, 0], width: 16, desc: "stage0 tcam key2" }
 
-      # dbg_stg_tcam_match_rcd1: 6 u32 words (0x0524 .. 0x053b)
-      - { domain: 63, name: dbg_stg_tcam_match_rcd1_0, bits: [31, 0], width: 32, desc: "stg tcam match record 1 word 0" }
-      - { domain: 64, name: dbg_stg_tcam_match_rcd1_1, bits: [31, 0], width: 32, desc: "stg tcam match record 1 word 1" }
-      - { domain: 65, name: dbg_stg_tcam_match_rcd1_2, bits: [31, 0], width: 32, desc: "stg tcam match record 1 word 2" }
-      - { domain: 66, name: dbg_stg_tcam_match_rcd1_3, bits: [31, 0], width: 32, desc: "stg tcam match record 1 word 3" }
-      - { domain: 67, name: dbg_stg_tcam_match_rcd1_4, bits: [31, 0], width: 32, desc: "stg tcam match record 1 word 4" }
-      - { domain: 68, name: dbg_stg_tcam_match_rcd1_5, bits: [31, 0], width: 32, desc: "stg tcam match record 1 word 5" }
+      - { domain: 58, name: dbg_stg_tcam_match_rcd0_1_key3, bits: [31, 16], width: 16, desc: "stage1 tcam key3" }
+      - { domain: 58, name: dbg_stg_tcam_match_rcd0_1_key2, bits: [15, 0], width: 16, desc: "stage1 tcam key2" }
+
+      - { domain: 59, name: dbg_stg_tcam_match_rcd0_2_key3, bits: [31, 16], width: 16, desc: "stage2 tcam key3" }
+      - { domain: 59, name: dbg_stg_tcam_match_rcd0_2_key2, bits: [15, 0], width: 16, desc: "stage2 tcam key2" }
+
+      - { domain: 60, name: dbg_stg_tcam_match_rcd0_3_key3, bits: [31, 16], width: 16, desc: "stage3 tcam key3" }
+      - { domain: 60, name: dbg_stg_tcam_match_rcd0_3_key2, bits: [15, 0], width: 16, desc: "stage3 tcam key2" }
+
+      - { domain: 61, name: dbg_stg_tcam_match_rcd0_4_key3, bits: [31, 16], width: 16, desc: "stage4 tcam key3" }
+      - { domain: 61, name: dbg_stg_tcam_match_rcd0_4_key2, bits: [15, 0], width: 16, desc: "stage4 tcam key2" }
+
+      - { domain: 62, name: dbg_stg_tcam_match_rcd0_5_key3, bits: [31, 16], width: 16, desc: "stage5 tcam key3" }
+      - { domain: 62, name: dbg_stg_tcam_match_rcd0_5_key2, bits: [15, 0], width: 16, desc: "stage5 tcam key2" }
+
+      # dbg_stg_tcam_match_rcd1: 6 stages × u32 (0x0524 .. 0x053b)：[31:16] key1, [15:0] key0
+      - { domain: 63, name: dbg_stg_tcam_match_rcd1_0_key1, bits: [31, 16], width: 16, desc: "stage0 tcam key1" }
+      - { domain: 63, name: dbg_stg_tcam_match_rcd1_0_key0, bits: [15, 0], width: 16, desc: "stage0 tcam key0" }
+
+      - { domain: 64, name: dbg_stg_tcam_match_rcd1_1_key1, bits: [31, 16], width: 16, desc: "stage1 tcam key1" }
+      - { domain: 64, name: dbg_stg_tcam_match_rcd1_1_key0, bits: [15, 0], width: 16, desc: "stage1 tcam key0" }
+
+      - { domain: 65, name: dbg_stg_tcam_match_rcd1_2_key1, bits: [31, 16], width: 16, desc: "stage2 tcam key1" }
+      - { domain: 65, name: dbg_stg_tcam_match_rcd1_2_key0, bits: [15, 0], width: 16, desc: "stage2 tcam key0" }
+
+      - { domain: 66, name: dbg_stg_tcam_match_rcd1_3_key1, bits: [31, 16], width: 16, desc: "stage3 tcam key1" }
+      - { domain: 66, name: dbg_stg_tcam_match_rcd1_3_key0, bits: [15, 0], width: 16, desc: "stage3 tcam key0" }
+
+      - { domain: 67, name: dbg_stg_tcam_match_rcd1_4_key1, bits: [31, 16], width: 16, desc: "stage4 tcam key1" }
+      - { domain: 67, name: dbg_stg_tcam_match_rcd1_4_key0, bits: [15, 0], width: 16, desc: "stage4 tcam key0" }
+
+      - { domain: 68, name: dbg_stg_tcam_match_rcd1_5_key1, bits: [31, 16], width: 16, desc: "stage5 tcam key1" }
+      - { domain: 68, name: dbg_stg_tcam_match_rcd1_5_key0, bits: [15, 0], width: 16, desc: "stage5 tcam key0" }
 
       # dbg_stg_tcam_match_rcd2: 6 stages × u32 (0x053c .. 0x0553)：[31:23] rsv, [22] tcam_hit, [21:16] tcam_idx, [15:0] key
       - { domain: 69, name: dbg_stg_tcam_match_rcd2_0_rsv, bits: [31, 23], width: 9, desc: "stage0 reserved" }
