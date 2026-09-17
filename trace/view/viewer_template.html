@@ -1694,7 +1694,8 @@
       '<div class="bin-reveal">' + escapeHtml(bin) + "</div></td>";
   }
 
-  const STAGE_RCD_RE = /^(dbg_stg_(?:tcam_match_rcd\d+|info_rcd|done_rcd))_(\d+)_([A-Za-z0-9_]+)$/i;
+  const STAGE_RCD_RE =
+    /^(dbg_stg_(?:tcam_match_rcd\d+|info_rcd|done_rcd)|dbg_ctn_info)_(\d+)_([A-Za-z0-9_]+)$/i;
 
   function isStageRcdFieldName(name) {
     return STAGE_RCD_RE.test(String(name || ""));
@@ -1779,22 +1780,23 @@
         cols.push({
           sub,
           bits: f.bits || "",
-          desc: String(f.desc || "").replace(/^stage\d+\s*/i, ""),
+          desc: String(f.desc || "").replace(/^(?:stage|word)\d+\s*/i, ""),
           reserved: !!f.reserved,
         });
       }
     }
     const rows = Array.from(stages.values()).sort((a, b) => a.stage - b.stage);
     if (!rows.length || !cols.length) return null;
-    return { base, cols, rows };
+    const idxLabel = /^dbg_stg_/i.test(base) ? "Stage" : "Word";
+    return { base, cols, rows, idxLabel };
   }
 
   function renderStageRcdTable(fields, title) {
     const info = detectStageRcdMatrix(fields || []);
     if (!info) return renderFieldTable(fields || [], title);
     let html = '<div class="meta">' + escapeHtml(title || info.base) + ' · ' + info.rows.length +
-      ' stage × ' + info.cols.length + ' 位域</div>';
-    html += '<table class="fields stage-rcd"><thead><tr><th>Stage</th>';
+      ' ' + info.idxLabel.toLowerCase() + ' × ' + info.cols.length + ' 位域</div>';
+    html += '<table class="fields stage-rcd"><thead><tr><th>' + info.idxLabel + '</th>';
     info.cols.forEach((c) => {
       html += '<th title="' + escapeHtml(c.desc) + '">' + escapeHtml(c.sub) +
         ' <span class="c-bits">' + escapeHtml(c.bits) + '</span></th>';

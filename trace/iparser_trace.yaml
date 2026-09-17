@@ -267,20 +267,51 @@ traces:
       - { domain: 92, name: dbg_pstproc_dptr_rcd2_dptr11, bits: [11, 6], width: 6, desc: "dptr11" }
       - { domain: 92, name: dbg_pstproc_dptr_rcd2_dptr10, bits: [5, 0], width: 6, desc: "dptr10" }
 
-      # dbg_ctn_info: 16 u32 words (0x059c .. 0x05db)
-      - { domain: 93, name: dbg_ctn_info_0,  bits: [31, 0], width: 32, desc: "ctn info word 0" }
-      - { domain: 94, name: dbg_ctn_info_1,  bits: [31, 0], width: 32, desc: "ctn info word 1" }
-      - { domain: 95, name: dbg_ctn_info_2,  bits: [31, 0], width: 32, desc: "ctn info word 2" }
-      - { domain: 96, name: dbg_ctn_info_3,  bits: [31, 0], width: 32, desc: "ctn info word 3" }
-      - { domain: 97, name: dbg_ctn_info_4,  bits: [31, 0], width: 32, desc: "ctn info word 4" }
-      - { domain: 98, name: dbg_ctn_info_5,  bits: [31, 0], width: 32, desc: "ctn info word 5" }
-      - { domain: 99, name: dbg_ctn_info_6,  bits: [31, 0], width: 32, desc: "ctn info word 6" }
-      - { domain: 100, name: dbg_ctn_info_7, bits: [31, 0], width: 32, desc: "ctn info word 7" }
-      - { domain: 101, name: dbg_ctn_info_8, bits: [31, 0], width: 32, desc: "ctn info word 8" }
-      - { domain: 102, name: dbg_ctn_info_9, bits: [31, 0], width: 32, desc: "ctn info word 9" }
-      - { domain: 103, name: dbg_ctn_info_10, bits: [31, 0], width: 32, desc: "ctn info word 10" }
-      - { domain: 104, name: dbg_ctn_info_11, bits: [31, 0], width: 32, desc: "ctn info word 11" }
-      - { domain: 105, name: dbg_ctn_info_12, bits: [31, 0], width: 32, desc: "ctn info word 12" }
-      - { domain: 106, name: dbg_ctn_info_13, bits: [31, 0], width: 32, desc: "ctn info word 13" }
-      - { domain: 107, name: dbg_ctn_info_14, bits: [31, 0], width: 32, desc: "ctn info word 14" }
-      - { domain: 108, name: dbg_ctn_info_15, bits: [31, 0], width: 32, desc: "ctn info word 15" }
+      # dbg_ctn_info: 16 u32 words (0x059c .. 0x05db)：[31:16] ctn_gen_val, [15:0] ctn_gen_en
+      - { domain: 93, name: dbg_ctn_info_0_ctn_gen_val, bits: [31, 16], width: 16, desc: "word0 ctn gen val" }
+      - { domain: 93, name: dbg_ctn_info_0_ctn_gen_en, bits: [15, 0], width: 16, desc: "word0 ctn gen en" }
+
+      - { domain: 94, name: dbg_ctn_info_1_ctn_gen_val, bits: [31, 16], width: 16, desc: "word1 ctn gen val" }
+      - { domain: 94, name: dbg_ctn_info_1_ctn_gen_en, bits: [15, 0], width: 16, desc: "word1 ctn gen en" }
+
+      - { domain: 95, name: dbg_ctn_info_2_ctn_gen_val, bits: [31, 16], width: 16, desc: "word2 ctn gen val" }
+      - { domain: 95, name: dbg_ctn_info_2_ctn_gen_en, bits: [15, 0], width: 16, desc: "word2 ctn gen en" }
+
+      - { domain: 96, name: dbg_ctn_info_3_ctn_gen_val, bits: [31, 16], width: 16, desc: "word3 ctn gen val" }
+      - { domain: 96, name: dbg_ctn_info_3_ctn_gen_en, bits: [15, 0], width: 16, desc: "word3 ctn gen en" }
+
+      - { domain: 97, name: dbg_ctn_info_4_ctn_gen_val, bits: [31, 16], width: 16, desc: "word4 ctn gen val" }
+      - { domain: 97, name: dbg_ctn_info_4_ctn_gen_en, bits: [15, 0], width: 16, desc: "word4 ctn gen en" }
+
+      - { domain: 98, name: dbg_ctn_info_5_ctn_gen_val, bits: [31, 16], width: 16, desc: "word5 ctn gen val" }
+      - { domain: 98, name: dbg_ctn_info_5_ctn_gen_en, bits: [15, 0], width: 16, desc: "word5 ctn gen en" }
+
+      - { domain: 99, name: dbg_ctn_info_6_ctn_gen_val, bits: [31, 16], width: 16, desc: "word6 ctn gen val" }
+      - { domain: 99, name: dbg_ctn_info_6_ctn_gen_en, bits: [15, 0], width: 16, desc: "word6 ctn gen en" }
+
+      - { domain: 100, name: dbg_ctn_info_7_ctn_gen_val, bits: [31, 16], width: 16, desc: "word7 ctn gen val" }
+      - { domain: 100, name: dbg_ctn_info_7_ctn_gen_en, bits: [15, 0], width: 16, desc: "word7 ctn gen en" }
+
+      - { domain: 101, name: dbg_ctn_info_8_ctn_gen_val, bits: [31, 16], width: 16, desc: "word8 ctn gen val" }
+      - { domain: 101, name: dbg_ctn_info_8_ctn_gen_en, bits: [15, 0], width: 16, desc: "word8 ctn gen en" }
+
+      - { domain: 102, name: dbg_ctn_info_9_ctn_gen_val, bits: [31, 16], width: 16, desc: "word9 ctn gen val" }
+      - { domain: 102, name: dbg_ctn_info_9_ctn_gen_en, bits: [15, 0], width: 16, desc: "word9 ctn gen en" }
+
+      - { domain: 103, name: dbg_ctn_info_10_ctn_gen_val, bits: [31, 16], width: 16, desc: "word10 ctn gen val" }
+      - { domain: 103, name: dbg_ctn_info_10_ctn_gen_en, bits: [15, 0], width: 16, desc: "word10 ctn gen en" }
+
+      - { domain: 104, name: dbg_ctn_info_11_ctn_gen_val, bits: [31, 16], width: 16, desc: "word11 ctn gen val" }
+      - { domain: 104, name: dbg_ctn_info_11_ctn_gen_en, bits: [15, 0], width: 16, desc: "word11 ctn gen en" }
+
+      - { domain: 105, name: dbg_ctn_info_12_ctn_gen_val, bits: [31, 16], width: 16, desc: "word12 ctn gen val" }
+      - { domain: 105, name: dbg_ctn_info_12_ctn_gen_en, bits: [15, 0], width: 16, desc: "word12 ctn gen en" }
+
+      - { domain: 106, name: dbg_ctn_info_13_ctn_gen_val, bits: [31, 16], width: 16, desc: "word13 ctn gen val" }
+      - { domain: 106, name: dbg_ctn_info_13_ctn_gen_en, bits: [15, 0], width: 16, desc: "word13 ctn gen en" }
+
+      - { domain: 107, name: dbg_ctn_info_14_ctn_gen_val, bits: [31, 16], width: 16, desc: "word14 ctn gen val" }
+      - { domain: 107, name: dbg_ctn_info_14_ctn_gen_en, bits: [15, 0], width: 16, desc: "word14 ctn gen en" }
+
+      - { domain: 108, name: dbg_ctn_info_15_ctn_gen_val, bits: [31, 16], width: 16, desc: "word15 ctn gen val" }
+      - { domain: 108, name: dbg_ctn_info_15_ctn_gen_en, bits: [15, 0], width: 16, desc: "word15 ctn gen en" }
