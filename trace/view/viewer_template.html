@@ -1694,7 +1694,7 @@
       '<div class="bin-reveal">' + escapeHtml(bin) + "</div></td>";
   }
 
-  const STAGE_RCD_RE = /^(dbg_stg_(?:tcam_match_rcd2|info_rcd|done_rcd))_(\d+)_([A-Za-z0-9_]+)$/i;
+  const STAGE_RCD_RE = /^(dbg_stg_(?:tcam_match_rcd\d+|info_rcd|done_rcd))_(\d+)_([A-Za-z0-9_]+)$/i;
 
   function isStageRcdFieldName(name) {
     return STAGE_RCD_RE.test(String(name || ""));
