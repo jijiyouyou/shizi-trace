@@ -1,0 +1,2465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trace View · MAU / MPL</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #0f1722;
+      --header: #141b2d;
+      --side: #101826;
+      --border: #243044;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #7e3794;
+      --tab-idle: #1e3a5f;
+      --mod-bar: #163b58;
+      --th: #12263a;
+      --field: #7dd3fc;
+      --hex: #34d399;
+      --bits: #f59e0b;
+      --addr: #eab308;
+      --stat: #fb923c;
+      --warn: #e6a23c;
+      --err: #e25555;
+      --rsv: #64748b;
+      --mono: "Cascadia Code", "Consolas", "SF Mono", ui-monospace, monospace;
+      --sans: "Segoe UI", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      padding: 0.85rem 1.25rem 0.7rem;
+      background: var(--header);
+      border-bottom: 2px solid var(--accent);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.75rem 1.5rem;
+    }
+    header h1 { margin: 0; font-size: 1.15rem; font-weight: 600; color: #fff; }
+    header .sub { color: var(--muted); font-size: 0.85rem; }
+    .tabs { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+    .tabs button {
+      margin: 0;
+      background: var(--tab-idle);
+      border: 1px solid transparent;
+      color: #93c5fd;
+      padding: 0.4rem 0.85rem;
+      border-radius: 4px 4px 0 0;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .tabs button.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(280px, 340px) 1fr;
+      gap: 0;
+      flex: 1;
+      min-height: 0;
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    .side, .main {
+      padding: 1rem 1.25rem;
+      overflow: auto;
+    }
+    .side { border-right: 1px solid var(--border); background: var(--side); }
+    label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin: 0.6rem 0 0.3rem;
+    }
+    textarea, select, input[type="text"], input[type="search"] {
+      width: 100%;
+      background: #0b1220;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      padding: 0.5rem 0.65rem;
+    }
+    textarea { min-height: 140px; resize: vertical; line-height: 1.4; }
+    .row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: end; }
+    .row > * { flex: 1; min-width: 100px; }
+    button.primary, button.secondary {
+      margin-top: 0.75rem;
+      border: none;
+      color: #fff;
+      font-weight: 600;
+      padding: 0.55rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    button.primary { background: var(--accent); }
+    button.secondary { background: #334155; margin-left: 0.35rem; }
+    button:hover { filter: brightness(1.06); }
+    .status {
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      white-space: pre-wrap;
+    }
+    .status.err { color: var(--err); }
+    .status.warn { color: var(--warn); }
+    .nav-tree { margin-top: 1rem; font-size: 0.85rem; }
+    .nav-tree details { margin: 0.2rem 0; }
+    .nav-tree summary { cursor: pointer; color: var(--muted); }
+    .nav-tree button.leaf {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      padding: 0.25rem 0.4rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      margin: 0;
+    }
+    .nav-tree button.leaf:hover, .nav-tree button.leaf.active {
+      background: var(--mod-bar);
+      color: #fff;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+    .toolbar input[type="search"] { max-width: 260px; }
+    .view-stats {
+      margin-left: auto;
+      font-size: 0.8rem;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .view-stats .num { color: var(--stat); font-weight: 600; }
+    .view-stats .sep { color: var(--muted); margin: 0 0.2rem; }
+    input[type="file"] { color: #93c5fd; font-size: 0.8rem; }
+    input[type="file"]::file-selector-button {
+      background: #fff;
+      color: #111827;
+      border: none;
+      padding: 0.32rem 0.7rem;
+      margin-right: 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: var(--sans);
+    }
+    .seg > summary .reg-name { font-weight: 700; color: #fff; }
+    .seg {
+      border: 1px solid #1e3a4c;
+      border-radius: 2px;
+      margin-bottom: 0.55rem;
+      overflow: hidden;
+      background: var(--panel);
+    }
+    .seg > summary {
+      padding: 0.45rem 0.75rem;
+      background: var(--mod-bar);
+      cursor: pointer;
+      font-family: var(--mono);
+      font-size: 0.84rem;
+      color: #fff;
+      list-style: none;
+    }
+    .seg > summary::-webkit-details-marker { display: none; }
+    .seg > summary::before { content: "▾ "; color: #fff; }
+    .seg:not([open]) > summary::before { content: "▸ "; }
+    .seg > summary .c-addr { color: var(--addr); }
+    .seg > summary .c-hex { color: var(--hex); }
+    .c-meta { color: #93c5fd; font-weight: 400; }
+    .seg-body { padding: 0; overflow-x: auto; }
+    .seg-body > .seg { border-left: none; border-right: none; border-radius: 0; margin-bottom: 0; }
+    table.fields {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 0.78rem;
+      font-family: var(--mono);
+    }
+    table.fields col.c-idx { width: 3.2rem; }
+    table.fields col.c-dom { width: 5.2rem; }
+    table.fields col.c-raw { width: 7.6rem; }
+    table.fields col.c-field { width: 16rem; }
+    table.fields col.c-bits { width: 6.2rem; }
+    table.fields col.c-w { width: 4.2rem; }
+    table.fields col.c-hex { width: 8.2rem; }
+    table.fields col.c-dec { width: 6.2rem; }
+    table.fields th, table.fields td {
+      border-bottom: 1px solid #1b2a3a;
+      padding: 0.32rem 0.5rem;
+      text-align: left;
+      vertical-align: top;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    table.fields.compact-hex {
+      table-layout: auto;
+      width: auto;
+      margin: 0.25rem 0.6rem 0.5rem;
+    }
+    table.fields.compact-hex th,
+    table.fields.compact-hex td {
+      padding: 0.1rem 0.2rem;
+      font-size: 0.7rem;
+      line-height: 1.2;
+      border-bottom: none;
+      white-space: nowrap;
+      letter-spacing: 0;
+    }
+    table.fields.compact-hex td.c-hex {
+      color: var(--hex);
+      font-family: var(--mono);
+      padding-left: 0.1rem;
+      padding-right: 0.1rem;
+    }
+    table.fields.compact-hdr td.c-hex {
+      font-size: 0.9rem;
+      padding-left: 0.35rem;
+      padding-right: 0.35rem;
+    }
+    table.fields th {
+      color: #cbd5e1;
+      font-weight: 500;
+      font-family: var(--sans);
+      background: var(--th);
+      position: sticky;
+      top: 0;
+    }
+    table.fields tbody tr:nth-child(even) { background: #101a26; }
+    table.fields .c-idx { color: var(--muted); }
+    table.fields .c-dom, table.fields .c-field { color: var(--field); }
+    table.fields .c-bits { color: var(--bits); }
+    table.fields .c-hex, table.fields .c-raw { color: var(--hex); }
+    table.fields .c-dec, table.fields .c-w { color: var(--text); font-variant-numeric: tabular-nums; }
+    table.fields .c-desc {
+      color: var(--muted);
+      font-family: var(--sans);
+      white-space: normal;
+      overflow: visible;
+      text-overflow: unset;
+      word-break: break-word;
+    }
+    table.fields .hex-toggle {
+      cursor: pointer;
+      border-bottom: 1px dotted rgba(52, 211, 153, 0.45);
+    }
+    table.fields .hex-toggle:hover { filter: brightness(1.15); }
+    table.fields .bin-reveal {
+      display: none;
+      margin-top: 0.2rem;
+      color: #cbd5e1;
+      font-size: 0.72rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.35;
+    }
+    table.fields td.bin-show {
+      white-space: normal;
+      overflow: visible;
+    }
+    table.fields td.bin-show .bin-reveal { display: block; }
+    table.fields tr.rsv td { color: var(--rsv); }
+    table.fields tr.rsv .c-field,
+    table.fields tr.rsv .c-hex,
+    table.fields tr.rsv .c-raw,
+    table.fields tr.rsv .c-bits,
+    table.fields tr.rsv .c-dom { color: var(--rsv); }
+    table.fields tr.rsv .hex-toggle { border-bottom-color: rgba(100, 116, 139, 0.5); }
+    table.fields tr.highlight td { background: rgba(126, 55, 148, 0.18); }
+    table.fields tr.hidden { display: none; }
+    .paw-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 0.8rem; margin: 0; }
+    .paw-table th, .paw-table td {
+      border-bottom: 1px solid #1b2a3a;
+      padding: 0.35rem 0.5rem;
+      text-align: center;
+    }
+    .paw-table th { color: #cbd5e1; font-weight: 500; font-family: var(--sans); background: var(--th); }
+    .paw-table .paw-name { text-align: left; color: var(--field); white-space: nowrap; }
+    .paw-table td { color: var(--hex); }
+    .paw-hint { color: var(--muted); font-size: 0.75rem; margin: 0.35rem 0.5rem; }
+    table.ctn-pair { table-layout: auto; }
+    table.ctn-pair th, table.ctn-pair td { white-space: nowrap; }
+    table.ctn-pair .c-idx { color: var(--muted); }
+    table.ctn-pair .pair-name { color: var(--field); font-weight: 600; }
+    .hex-blob {
+      margin: 0;
+      border-top: 1px solid #1b2a3a;
+      background: #0b1220;
+      overflow: hidden;
+    }
+    .hex-blob-title {
+      padding: 0.4rem 0.65rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      border-bottom: 1px solid #1b2a3a;
+      font-family: var(--sans);
+      background: var(--th);
+    }
+    .hex-blob-body {
+      margin: 0;
+      padding: 0.65rem 0.75rem;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      line-height: 1.55;
+      color: var(--hex);
+      white-space: pre-wrap;
+      word-break: break-all;
+      user-select: text;
+    }
+    .meta { color: var(--muted); font-size: 0.8rem; margin: 0.4rem 0.65rem 0.5rem; }
+    .meta .c-hex { color: var(--hex); }
+    .meta .c-addr { color: var(--addr); }
+    .stat-line { color: var(--text); font-size: 0.8rem; }
+    .stat-line .lbl { color: var(--addr); }
+    .stat-line .num { color: var(--stat); }
+    .placeholder {
+      padding: 2rem;
+      color: var(--muted);
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      text-align: center;
+    }
+    .linkish {
+      background: none;
+      border: none;
+      color: var(--accent);
+      cursor: pointer;
+      font-size: inherit;
+      padding: 0;
+      margin: 0;
+      text-decoration: underline;
+    }
+    footer.status-bar {
+      border-top: 1px solid var(--border);
+      padding: 0.4rem 1.25rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      background: var(--header);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Trace View</h1>
+      <div class="sub">流水线 dump 字段级解码 · 格式来自 mau_trace.yaml</div>
+    </div>
+    <nav class="tabs" id="moduleTabs">
+      <button type="button" data-mod="mau" class="active">mau</button>
+      <button type="button" data-mod="mpl">mpl</button>
+      <button type="button" data-mod="iparser">iparser</button>
+      <button type="button" data-mod="eparser">eparser</button>
+      <button type="button" data-mod="pedt">pedt</button>
+    </nav>
+  </header>
+
+  <div class="layout">
+    <aside class="side">
+      <label>粘贴 hex / dump</label>
+      <textarea id="pasteArea" placeholder="粘贴 Domain 十六进制，或整段带 ---- xxx start ---- 的日志…"></textarea>
+
+      <label>选择日志文件（仅本地 FileReader）</label>
+      <input type="file" id="fileInput" accept=".log,.txt,.dump,.out,*/*" />
+
+      <div>
+        <button type="button" class="primary" id="btnParse">解析</button>
+        <button type="button" class="secondary" id="btnClear">清空</button>
+        <button type="button" class="secondary" id="btnExport">导出 CSV</button>
+      </div>
+      <div class="status" id="parseStatus"></div>
+
+      <div class="nav-tree" id="navTree"></div>
+    </aside>
+
+    <section class="main">
+      <div class="toolbar">
+        <input type="search" id="fieldFilter" placeholder="Search register or field..." />
+        <label style="display:inline-flex;align-items:center;gap:0.35rem;margin:0;color:var(--muted);font-size:0.8rem;">
+          <input type="checkbox" id="hideRsv" /> 隐藏保留位
+        </label>
+        <div class="view-stats" id="viewStats"></div>
+      </div>
+      <div id="viewRoot">
+        <div class="placeholder">粘贴 hex 或选择日志文件后点击「解析」</div>
+      </div>
+    </section>
+  </div>
+
+  <footer class="status-bar" id="statusBar">就绪 · 格式表已嵌入</footer>
+
+  <script>
+  window.TRACE_LAYOUTS = __LAYOUTS_JSON__;
+  window.IPARSER_LAYOUTS = __IPARSER_LAYOUTS_JSON__;
+  window.EPARSER_LAYOUTS = __EPARSER_LAYOUTS_JSON__;
+  window.TRACE_RESULT = __RESULT_JSON__;
+  </script>
+  <script>
+(function () {
+  "use strict";
+
+  const L = window.TRACE_LAYOUTS;
+  const IP_L = window.IPARSER_LAYOUTS || { traces: {} };
+  const EP_L = window.EPARSER_LAYOUTS || { traces: {} };
+  if (!L || !L.traces) {
+    document.getElementById("statusBar").textContent = "错误：未嵌入格式表，请运行 build_viewer.py";
+    return;
+  }
+
+  const IPP = [0,1,2,3,4,5,6,7,8];
+  const EPP = [9,10];
+  const TRACE_ORDER = ["cls","keygen","vme0","vme1","vme2","vme3","vme4","lrr","egr"];
+  const STAT_ORDER = ["trace_ctrl","other_cfg","cfg_inst","fw_init","fw_ecc","fw_dbg","bp_stat","fifo_thres"];
+  const PAW_NAME_RE = /^Paw\d+$/i;
+
+  let state = {
+    module: "mau",
+    result: null,
+    selection: null, // { type, mau, seg, mplIndex }
+    lastFields: [],
+  };
+
+  /* ---------- hex / bit helpers ---------- */
+  function parseU32Tokens(text) {
+    if (!text || !String(text).trim()) throw new Error("空输入");
+    // 先剥离 dump 标记行（====== / ---- start/end ----），避免
+    // "part 1/3 end" / "(1/3)" / "(3/3)" 中的数字被当成 u32 数据
+    const stripped = String(text).replace(/^.*======.*======.*$/gim, " ");
+    // 去掉 "0xADDR:" / "ADDR:"，避免 reg dump 地址被当成 Domain 数据
+    const cleaned = stripped.replace(/(?:^|\s)(?:0x)?[0-9a-fA-F]{1,8}\s*:/gim, " ");
+    const re = /0x[0-9a-fA-F]+|\b[0-9a-fA-F]{8}\b|\b\d+\b/g;
+    const tokens = cleaned.match(re);
+    if (!tokens) throw new Error("未找到合法 hex/数值");
+    return tokens.map((t) => {
+      let v;
+      if (/^0x/i.test(t)) v = parseInt(t, 16);
+      else if (/^[0-9a-fA-F]{8}$/.test(t)) v = parseInt(t, 16);
+      else v = parseInt(t, 10);
+      if (!Number.isFinite(v) || v < 0 || v > 0xffffffff) throw new Error("非法/超出 u32: " + t);
+      return v >>> 0;
+    });
+  }
+
+  /** bits: [hi, lo]，bit0=LSB，bit31=MSB；与 Verilog [hi:lo] 一致 */
+  function parseBitsHiLo(bits) {
+    if (!bits || bits.length !== 2) throw new Error("bits 须为 [hi, lo]，收到: " + JSON.stringify(bits));
+    const hi = bits[0] | 0, lo = bits[1] | 0;
+    if (hi < lo) throw new Error("bits 应为 [hi, lo] 且 hi>=lo（bit0=LSB），收到 [" + hi + ", " + lo + "]");
+    if (lo < 0 || hi > 31) throw new Error("非法 bits [" + hi + ":" + lo + "]（超出 u32 bit0..bit31）");
+    return { hi, lo, width: hi - lo + 1 };
+  }
+
+  function extractBits(word, hi, lo) {
+    if (hi < lo || lo < 0 || hi > 31) throw new Error("非法 bits [" + hi + ":" + lo + "]");
+    const width = hi - lo + 1;
+    const mask = width === 32 ? 0xffffffff : ((1 << width) - 1) >>> 0;
+    return (((word >>> 0) >>> lo) & mask) >>> 0;
+  }
+
+  function fmtVal(val, width) {
+    const hexW = Math.max(1, Math.ceil(width / 4));
+    let hex;
+    if (typeof val === "bigint") hex = "0x" + val.toString(16).padStart(hexW, "0");
+    else hex = "0x" + (val >>> 0).toString(16).padStart(hexW, "0");
+    const dec = val.toString();
+    let bin = "";
+    if (typeof val === "bigint") bin = width <= 64 ? ("0b" + val.toString(2).padStart(width, "0")) : ("0b…(" + width + "bit)");
+    else if (width <= 64) bin = "0b" + (val >>> 0).toString(2).padStart(width, "0");
+    else bin = "0b…(" + width + "bit)";
+    return { hex, dec, bin };
+  }
+
+  function reverseU8x4(val) {
+    const v = val >>> 0;
+    return (
+      ((v & 0x000000ff) << 24) |
+      ((v & 0x0000ff00) << 8) |
+      ((v & 0x00ff0000) >>> 8) |
+      ((v & 0xff000000) >>> 24)
+    ) >>> 0;
+  }
+
+  function applyByteRev(val, fd) {
+    const mode = fd && fd.byte_rev;
+    if (!mode) return val >>> 0;
+    if (mode === true || mode === "u8x4" || mode === "rev_u8" || mode === "true" || mode === 1)
+      return reverseU8x4(val);
+    throw new Error((fd.name || "") + ": 未知 byte_rev=" + mode);
+  }
+
+  function fieldRow(domain, name, hi, lo, width, value, desc, extra) {
+    const f = fmtVal(value, width);
+    const reserved = /^(rsv|reserved)$/i.test(name) || (desc && desc.indexOf("保留") >= 0);
+    const row = {
+      domain, name, bits: "[" + hi + ":" + lo + "]", hi, lo, width,
+      value, value_hex: f.hex, value_dec: f.dec, value_bin: f.bin,
+      desc: desc || "", reserved,
+    };
+    if (extra) Object.assign(row, extra);
+    return row;
+  }
+
+  function decodeComposedField(words, fd) {
+    const name = fd.name || "";
+    const pieces = fd.pieces || [];
+    if (!pieces.length) throw new Error(name + ": compose 字段缺少 pieces");
+    let hi, lo, width;
+    if (fd.bits) {
+      hi = fd.bits[0] | 0; lo = fd.bits[1] | 0;
+      if (hi < lo || lo < 0) throw new Error(name + ": 非法逻辑 bits [" + hi + ":" + lo + "]");
+      width = hi - lo + 1;
+    } else {
+      width = fd.width | 0;
+      if (width <= 0) throw new Error(name + ": 缺少 bits/width");
+      hi = width - 1; lo = 0;
+    }
+    if (fd.width != null && (fd.width | 0) !== width) {
+      throw new Error(name + ": width=" + fd.width + " 与 bits[" + hi + ":" + lo + "] 宽度 " + width + " 不一致");
+    }
+    let val = 0;
+    const srcParts = [];
+    const domains = [];
+    pieces.forEach((p) => {
+      const d = p.domain | 0;
+      const pb = parseBitsHiLo(p.bits);
+      if (!p.into || p.into.length !== 2) throw new Error(name + ": piece D" + d + " 缺少 into");
+      const ihi = p.into[0] | 0, ilo = p.into[1] | 0;
+      if (ihi < ilo || ilo < 0) throw new Error(name + ": 非法 into [" + ihi + ":" + ilo + "]");
+      if (ihi - ilo + 1 !== pb.width) {
+        throw new Error(name + ": D" + d + "[" + pb.hi + ":" + pb.lo + "] 宽与 into 不一致");
+      }
+      if (d < 0 || d >= words.length) throw new Error(name + ": D" + d + " 越界");
+      const piece = extractBits(words[d], pb.hi, pb.lo);
+      val |= piece << ilo;
+      srcParts.push("D" + d + "[" + pb.hi + ":" + pb.lo + "]→[" + ihi + ":" + ilo + "]");
+      domains.push(d);
+    });
+    const seen = [];
+    domains.forEach((d) => { if (seen.indexOf(d) < 0) seen.push(d); });
+    const mask = width === 32 ? 0xffffffff : ((1 << width) - 1) >>> 0;
+    return fieldRow(null, name, hi, lo, width, (val & mask) >>> 0, fd.desc, {
+      domain_label: seen.map((d) => "D" + d).join("+"),
+      bits: "[" + hi + ":" + lo + "] (" + srcParts.join("+") + ")",
+    });
+  }
+
+  function decodeTrace(words, layout, allowShort) {
+    const need = layout.word_count | 0;
+    const domainBase = (layout.domain_base | 0) || 0;
+    const minLen = need && domainBase ? domainBase + need : need;
+    if (minLen && words.length < minLen && !allowShort) {
+      throw new Error("长度不足：需要 " + minLen + " 个 Domain，实际 " + words.length);
+    }
+    const w = (need && !domainBase && words.length > need) ? words.slice(0, need) : words.slice();
+    const rows = [];
+    const errors = [];
+    (layout.fields || []).forEach((fd) => {
+      if (fd.pieces) {
+        try { rows.push(decodeComposedField(w, fd)); }
+        catch (e) { errors.push(e.message); }
+        return;
+      }
+      const domain = fd.domain | 0;
+      let hi, lo, width;
+      try {
+        const b = parseBitsHiLo(fd.bits);
+        hi = b.hi; lo = b.lo; width = b.width;
+        if (fd.width != null && (fd.width | 0) !== width) {
+          errors.push("D" + domain + " " + fd.name + ": width=" + fd.width + " 与 bits[" + hi + ":" + lo + "] 宽度 " + width + " 不一致，已按 bits 解析");
+        }
+      } catch (e) {
+        errors.push("D" + domain + " " + (fd.name || "") + ": " + e.message);
+        return;
+      }
+      if (domain < 0 || domain >= w.length) {
+        errors.push("D" + domain + " 越界: " + fd.name);
+        return;
+      }
+      try {
+        const val = applyByteRev(extractBits(w[domain], hi, lo), fd);
+        const row = fieldRow(domain, fd.name, hi, lo, width, val, fd.desc);
+        if (fd.byte_rev) row.byte_rev = fd.byte_rev;
+        rows.push(row);
+      } catch (e) {
+        errors.push("D" + domain + " " + fd.name + ": " + e.message);
+      }
+    });
+    return attachLurView(attachCtnU16View(attachWordHex(attachHexBlobs({
+      title: layout.title || "",
+      word_count: need,
+      words: w.map((x) => "0x" + (x >>> 0).toString(16).padStart(8, "0")),
+      fields: rows,
+      errors,
+    }))));
+  }
+
+  function attachHexBlobs(decoded) {
+    const fields = decoded.fields || [];
+    const blobs = [];
+    let i = 0;
+    while (i < fields.length) {
+      const f = fields[i];
+      const name = String(f.name || "");
+      if ((f.width | 0) === 32 && (f.hi | 0) === 31 && (f.lo | 0) === 0 && name) {
+        const group = [f];
+        let j = i + 1;
+        while (j < fields.length) {
+          const g = fields[j];
+          if (String(g.name || "") === name && (g.width | 0) === 32 && (g.hi | 0) === 31 && (g.lo | 0) === 0) {
+            group.push(g);
+            j++;
+          } else break;
+        }
+        if (group.length >= 2) {
+          const wordsHex = group.map((c) => {
+            const n = parseInt(String(c.value_hex || "0"), 16);
+            return "0x" + ((Number.isFinite(n) ? n : 0) >>> 0).toString(16).padStart(8, "0");
+          });
+          if (name === "mau_lpm_req_data" && j < fields.length) {
+            const tail = fields[j];
+            if (String(tail.name || "") === name && (tail.width | 0) === 16) {
+              const n = parseInt(String(tail.value_hex || "0"), 16);
+              wordsHex.push("0x" + ((Number.isFinite(n) ? n : 0) & 0xffff).toString(16).padStart(8, "0"));
+              j++;
+            }
+          }
+          const loDesc = group[0].desc || "";
+          const hiDesc = group[group.length - 1].desc || "";
+          blobs.push({
+            name,
+            label: name === "mau_lpm_req_data" ? (name + " · 原始") :
+              (loDesc ? (name + " · " + loDesc + " … " + hiDesc) : name),
+            hex_line: wordsHex.join(" "),
+            words_hex: wordsHex,
+            domains: group.map((c) => c.domain),
+            word_count: wordsHex.length,
+          });
+        }
+        i = j;
+        continue;
+      }
+      i++;
+    }
+    if (blobs.length) decoded.hex_blobs = blobs;
+    return decoded;
+  }
+
+  function assemblePayloadBits(words, fieldName, layout, opts) {
+    const msbFirst = !!(opts && opts.msb_first);
+    const pieces = [];
+    (layout.fields || []).forEach((fd) => {
+      if (fd.name !== fieldName) return;
+      const domain = fd.domain | 0;
+      const b = parseBitsHiLo(fd.bits);
+      if (domain >= words.length) throw new Error("拼包缺 Domain D" + domain);
+      const piece = extractBits(words[domain], b.hi, b.lo) >>> 0;
+      pieces.push({ piece, width: b.width });
+    });
+    if (!msbFirst) {
+      let acc = 0n;
+      let bitPos = 0n;
+      pieces.forEach(({ piece, width }) => {
+        acc |= BigInt(piece) << bitPos;
+        bitPos += BigInt(width);
+      });
+      return acc;
+    }
+    let total = 0;
+    pieces.forEach((p) => { total += p.width; });
+    let acc = 0n;
+    let bitPos = total;
+    pieces.forEach(({ piece, width }) => {
+      bitPos -= width;
+      const mask = (1n << BigInt(width)) - 1n;
+      acc |= (BigInt(piece) & mask) << BigInt(bitPos);
+    });
+    return acc;
+  }
+
+  function decodePayload(bitvec, payloadLayout, title) {
+    const rows = [];
+    (payloadLayout.fields || []).forEach((fd) => {
+      const hi = fd.bits[0] | 0, lo = fd.bits[1] | 0;
+      if (hi < lo || lo < 0) throw new Error("非法 payload bits [" + hi + ":" + lo + "]");
+      const width = hi - lo + 1;
+      const mask = (1n << BigInt(width)) - 1n;
+      const val = (bitvec >> BigInt(lo)) & mask;
+      const num = width <= 53 ? Number(val) : val;
+      const row = fieldRow(null, fd.name, hi, lo, width, num, fd.desc);
+      if (fd.highlight) row.highlight = fd.highlight;
+      if (width >= 64) {
+        const words = [];
+        const nwords = Math.ceil(width / 32);
+        for (let i = 0; i < nwords; i++) {
+          const w = Number((val >> BigInt(32 * i)) & 0xffffffffn);
+          words.push("0x" + (w >>> 0).toString(16).padStart(8, "0"));
+        }
+        if (fd.words_rev) words.reverse();
+        row.words_hex = words;
+        row.value_hex_words = words.join(" ");
+        if (fd.words_rev) row.words_rev = true;
+      }
+      rows.push(row);
+    });
+    const highlighted = rows.filter((r) => r.highlight);
+    const rest = rows.filter((r) => !r.highlight);
+    return {
+      title: title || payloadLayout.title || "payload",
+      width: payloadLayout.width | 0,
+      bitvec_hex: "0x" + bitvec.toString(16),
+      fields: highlighted.concat(rest),
+      enable_fields: highlighted,
+      note: payloadLayout.note || "",
+    };
+  }
+
+  function decodeMpl(words) {
+    if (!words.length) throw new Error("mpl：空输入");
+    let bitvec = 0n;
+    words.forEach((w, i) => { bitvec |= BigInt(w >>> 0) << BigInt(32 * i); });
+    return decodePayload(bitvec, L.payloads.mau_mpl_req_data, "mau_mpl_req_data");
+  }
+
+  function groupPawRows(fields) {
+    const other = [];
+    const pawRows = [];
+    let i = 0;
+    while (i < fields.length) {
+      const f = fields[i];
+      const name = String(f.name || "");
+      if (!PAW_NAME_RE.test(name)) { other.push(f); i++; continue; }
+      const group = [f];
+      let j = i + 1;
+      while (j < fields.length && String(fields[j].name || "") === name) { group.push(fields[j]); j++; }
+      // 列顺序与 yaml 一致：[31:0] → [63:32] → [95:64] → [127:96]
+      for (let k = 0; k < group.length; k += 4) {
+        const chunk = group.slice(k, k + 4);
+        pawRows.push({
+          name,
+          words_hex: chunk.map((c) => c.value_hex),
+          domains: chunk.map((c) => c.domain),
+          width_bits: 32 * chunk.length,
+        });
+      }
+      i = j;
+    }
+    return { other, pawRows };
+  }
+
+  function groupCtnU16Pairs(fields) {
+    const other = [];
+    const enMap = {};
+    const valMap = {};
+    let enSeq = 0, valSeq = 0;
+    const re = /ctn_u16_(en|val)\[(\d+)\]/i;
+    (fields || []).forEach((f) => {
+      const name = String(f.name || "");
+      const desc = String(f.desc || "");
+      const m = desc.match(re) || name.match(re);
+      if (name === "ctn_u16_en" || (m && String(m[1]).toLowerCase() === "en")) {
+        const idx = m ? +m[2] : enSeq;
+        enMap[idx] = f;
+        enSeq++;
+        return;
+      }
+      if (name === "ctn_u16_val" || (m && String(m[1]).toLowerCase() === "val")) {
+        const idx = m ? +m[2] : valSeq;
+        valMap[idx] = f;
+        valSeq++;
+        return;
+      }
+      other.push(f);
+    });
+    const keys = Object.keys(enMap).concat(Object.keys(valMap)).map(Number);
+    const uniq = [];
+    keys.forEach((k) => { if (uniq.indexOf(k) < 0) uniq.push(k); });
+    uniq.sort((a, b) => a - b);
+    if (!uniq.length) return { other: fields || [], pairs: [] };
+    const pairs = uniq.map((i) => ({ index: i, en: enMap[i] || null, val: valMap[i] || null }));
+    return { other, pairs };
+  }
+
+  function attachCtnU16View(decoded) {
+    if (!decoded || !decoded.fields) return decoded;
+    const { other, pairs } = groupCtnU16Pairs(decoded.fields);
+    if (!pairs.length) return decoded;
+    return Object.assign({}, decoded, { fields: other, ctn_u16_pairs: pairs });
+  }
+
+  function attachLurView(decoded) {
+    if (!decoded || !decoded.fields) return decoded;
+    const other = [];
+    const lur = [];
+    decoded.fields.forEach((f) => {
+      if (String(f.name || "").toLowerCase() === "lur") lur.push(f);
+      else other.push(f);
+    });
+    if (!lur.length) return decoded;
+
+    let acc = 0n;
+    let bitPos = 0n;
+    lur.forEach((f) => {
+      const width = BigInt(f.width | 0);
+      if (width <= 0n) return;
+      let raw;
+      if (typeof f.value === "bigint") raw = f.value;
+      else if (f.value != null) raw = BigInt(f.value >>> 0);
+      else raw = BigInt(parseInt(String(f.value_hex || "0"), 16) || 0);
+      const mask = (1n << width) - 1n;
+      acc |= (raw & mask) << bitPos;
+      bitPos += width;
+    });
+
+    const lur42 = acc & ((1n << 42n) - 1n);
+    const lur256 = (acc >> 42n) & ((1n << 256n) - 1n);
+    const hex42 = "0x" + lur42.toString(16).padStart(11, "0");
+    const words256 = [];
+    for (let i = 0; i < 8; i++) {
+      const w = Number((lur256 >> BigInt(32 * i)) & 0xffffffffn);
+      words256.push("0x" + (w >>> 0).toString(16).padStart(8, "0"));
+    }
+    const lurBlobs = [
+      {
+        name: "lur-42",
+        label: "lur-42 · Lur[41:0] · 42bit",
+        hex_line: hex42,
+        words_hex: [hex42],
+        width: 42,
+        word_count: 1,
+        bits: "[41:0]",
+      },
+      {
+        name: "lur-256",
+        label: "lur-256 · Lur[297:42] · 256bit（切片内低位→高位 8×u32）",
+        hex_line: words256.join(" "),
+        words_hex: words256,
+        width: 256,
+        word_count: 8,
+        bits: "[297:42]",
+      },
+    ];
+    const existing = (decoded.hex_blobs || []).filter(
+      (b) => String(b.name || "").toLowerCase() !== "lur"
+    );
+    return Object.assign({}, decoded, {
+      fields: other,
+      hex_blobs: existing.concat(lurBlobs),
+      lur_blobs: lurBlobs,
+    });
+  }
+
+  function attachPawView(decoded) {
+    if (!decoded || !decoded.fields) return decoded;
+    const { other, pawRows } = groupPawRows(decoded.fields);
+    if (!pawRows.length) return decoded;
+    return Object.assign({}, decoded, { fields: other, paw_rows: pawRows });
+  }
+
+  function decodeVme(words, vmeIndex) {
+    const need = 52;
+    if (words.length < need) throw new Error("vme 长度不足：需要 " + need + "，实际 " + words.length);
+    const w = words.slice(0, need);
+    return {
+      title: vmeIndex != null ? ("VME" + vmeIndex + " trace") : "VME trace",
+      word_count: need,
+      words: w.map((x) => "0x" + (x >>> 0).toString(16).padStart(8, "0")),
+      lama: attachPawView(decodeTrace(w, L.traces.vme_lama_trace)),
+      lamb: attachPawView(decodeTrace(w, L.traces.vme_lamb_trace)),
+      errors: [],
+    };
+  }
+
+  function previewMplReqFromKeygen(words) {
+    const keygen = L.traces.keygen_trace;
+    const need = keygen.word_count | 0;
+    if (words.length < need) throw new Error("keygen 长度不足：需要 " + need + "，实际 " + words.length);
+    const bitvec = assemblePayloadBits(words.slice(0, need), "mau_mpl_req_data", keygen);
+    return decodePayload(bitvec, L.payloads.mau_mpl_req_data, "mau_mpl_req_data");
+  }
+
+  function previewMplRspFromLrr(words) {
+    const payload = (L.payloads || {}).mau_mpl_rsp_data;
+    if (!payload) throw new Error("缺少 payloads.mau_mpl_rsp_data");
+    const lrr = L.traces.lrr_trace;
+    const need = lrr.word_count | 0;
+    if (words.length < need) throw new Error("lrr 长度不足：需要 " + need + "，实际 " + words.length);
+    const bitvec = assemblePayloadBits(words.slice(0, need), "Lur", lrr);
+    return decodePayload(bitvec, payload, "mau_mpl_rsp_data");
+  }
+
+  function collectMauLpmReqU32s(words, keygen) {
+    const out = [];
+    (keygen.fields || []).forEach((fd) => {
+      if (fd.name !== "mau_lpm_req_data") return;
+      const domain = fd.domain | 0;
+      const b = parseBitsHiLo(fd.bits);
+      if (domain >= words.length) throw new Error("拼包缺 Domain D" + domain);
+      let piece = extractBits(words[domain], b.hi, b.lo) >>> 0;
+      if (b.width < 32) piece &= (1 << b.width) - 1;
+      out.push(piece >>> 0);
+    });
+    if (out.length !== 9) throw new Error("mau_lpm_req_data 期望 9×u32（8×32+16），实际 " + out.length + " 片");
+    return out;
+  }
+
+  // 第 9 个 u32 低 16bit 的 hdr 位域（相对该 16bit，不采用 yaml payload bits）
+  const LPM_HDR_BITS = {
+    lu_sip_vld: [15, 15],
+    lu_dip_vld: [14, 14],
+    is_ipv6: [13, 13],
+    vrf: [12, 0],
+  };
+
+  function decodeLpmReqFromU32s(u32s, payloadLayout) {
+    const hdr = (u32s[8] >>> 0) & 0xffff;
+    const sipDisp = [u32s[7], u32s[6], u32s[5], u32s[4]].map((w) => w >>> 0);
+    const dipDisp = [u32s[3], u32s[2], u32s[1], u32s[0]].map((w) => w >>> 0);
+    function packBe128(ws) {
+      let v = 0n;
+      ws.forEach((w, i) => { v |= BigInt(w >>> 0) << BigInt(32 * (3 - i)); });
+      return v;
+    }
+    const sipVal = packBe128(sipDisp);
+    const dipVal = packBe128(dipDisp);
+    const wordsHex = u32s.map((w) => "0x" + (w >>> 0).toString(16).padStart(8, "0"));
+    const wordsHexLine = wordsHex.join(" ");
+    const rows = [];
+    (payloadLayout.fields || []).forEach((fd) => {
+      const name = fd.name || "";
+      let hi = fd.bits[0] | 0, lo = fd.bits[1] | 0;
+      let width = hi - lo + 1;
+      let row;
+      if (LPM_HDR_BITS[name]) {
+        hi = LPM_HDR_BITS[name][0];
+        lo = LPM_HDR_BITS[name][1];
+        width = hi - lo + 1;
+        const val = (hdr >> lo) & ((1 << width) - 1);
+        row = fieldRow(null, name, hi, lo, width, val, fd.desc);
+      } else if (name === "sip") {
+        const num = Number(sipVal);
+        row = fieldRow(null, name, hi, lo, 128, (num <= Number.MAX_SAFE_INTEGER ? num : sipVal), fd.desc);
+        row.words_hex = sipDisp.map((w) => "0x" + (w >>> 0).toString(16).padStart(8, "0"));
+        row.value_hex_words = row.words_hex.join(" ");
+        row.words_rev = true;
+      } else if (name === "dip") {
+        const num = Number(dipVal);
+        row = fieldRow(null, name, hi, lo, 128, (num <= Number.MAX_SAFE_INTEGER ? num : dipVal), fd.desc);
+        row.words_hex = dipDisp.map((w) => "0x" + (w >>> 0).toString(16).padStart(8, "0"));
+        row.value_hex_words = row.words_hex.join(" ");
+        row.words_rev = true;
+      } else {
+        row = fieldRow(null, name, hi, lo, width, 0, fd.desc);
+      }
+      if (fd.highlight) row.highlight = fd.highlight;
+      rows.push(row);
+    });
+    const highlighted = rows.filter((r) => r.highlight);
+    const rest = rows.filter((r) => !r.highlight);
+    return {
+      title: "lpm_mpl_req_data",
+      width: payloadLayout.width | 0,
+      bitvec_hex: wordsHexLine,
+      raw_u32s: wordsHex,
+      hex_blobs: [{
+        name: "mau_lpm_req_data",
+        label: "mau_lpm_req_data · 原始",
+        hex_line: wordsHexLine,
+        words_hex: wordsHex,
+        word_count: 9,
+      }],
+      fields: highlighted.concat(rest),
+      enable_fields: highlighted,
+      note: payloadLayout.note || "",
+    };
+  }
+
+  function previewLpmReqFromKeygen(words) {
+    const payload = (L.payloads || {}).lpm_mpl_req_data;
+    if (!payload) throw new Error("缺少 payloads.lpm_mpl_req_data");
+    const keygen = L.traces.keygen_trace;
+    const need = keygen.word_count | 0;
+    if (words.length < need) throw new Error("keygen 长度不足：需要 " + need + "，实际 " + words.length);
+    const u32s = collectMauLpmReqU32s(words.slice(0, need), keygen);
+    return decodeLpmReqFromU32s(u32s, payload);
+  }
+
+  function collectLpmResultU32s(words, egr) {
+    let lo32 = null, mid32 = null, hi12 = null;
+    (egr.fields || []).forEach((fd) => {
+      if (fd.name !== "lpm_result") return;
+      const domain = fd.domain | 0;
+      const b = parseBitsHiLo(fd.bits);
+      if (domain >= words.length) throw new Error("拼包缺 Domain D" + domain);
+      const piece = extractBits(words[domain], b.hi, b.lo) >>> 0;
+      if (b.width === 32) {
+        if (lo32 == null) lo32 = piece >>> 0;
+        else if (mid32 == null) mid32 = piece >>> 0;
+        else throw new Error("lpm_result 超过 2 个 u32");
+      } else if (b.width === 12) {
+        hi12 = piece & 0xfff;
+      } else {
+        throw new Error("lpm_result 片宽须为 32 或 12，实际 " + b.width);
+      }
+    });
+    if (lo32 == null || mid32 == null || hi12 == null) {
+      throw new Error("lpm_result 期望 2×u32 + 12bit");
+    }
+    return [lo32, mid32, hi12];
+  }
+
+  function assembleLpmRspBitvec(u32s) {
+    if (!u32s || u32s.length !== 3) throw new Error("lpm_result 需要 3 片，实际 " + (u32s ? u32s.length : 0));
+    return (
+      BigInt(u32s[0] >>> 0) |
+      (BigInt(u32s[1] >>> 0) << 32n) |
+      (BigInt(u32s[2] & 0xfff) << 64n)
+    );
+  }
+
+  function decodeLpmRspFromU32s(u32s, payloadLayout) {
+    const bitvec = assembleLpmRspBitvec(u32s);
+    const out = decodePayload(bitvec, payloadLayout, "lpm_mpl_rsp_data");
+    const wordsHex = [
+      "0x" + (u32s[0] >>> 0).toString(16).padStart(8, "0"),
+      "0x" + (u32s[1] >>> 0).toString(16).padStart(8, "0"),
+      "0x" + (u32s[2] & 0xfff).toString(16).padStart(8, "0"),
+    ];
+    out.raw_u32s = wordsHex;
+    out.hex_blobs = [{
+      name: "lpm_result",
+      label: "lpm_result · D48|D49|D50[11:0] → [63:0]|[75:64]",
+      hex_line: wordsHex.join(" "),
+      words_hex: wordsHex,
+      word_count: 3,
+    }];
+    return out;
+  }
+
+  function previewLpmRspFromEgr(words) {
+    const payload = (L.payloads || {}).lpm_mpl_rsp_data;
+    if (!payload) throw new Error("缺少 payloads.lpm_mpl_rsp_data");
+    const egr = L.traces.egr_trace;
+    const need = egr.word_count | 0;
+    if (words.length < need) throw new Error("egr 长度不足：需要 " + need + "，实际 " + words.length);
+    const u32s = collectLpmResultU32s(words.slice(0, need), egr);
+    return decodeLpmRspFromU32s(u32s, payload);
+  }
+
+  function expandStatSlots(section) {
+    const regs = section.registers || {};
+    const items = [];
+    Object.keys(regs).forEach((name) => {
+      const spec = regs[name];
+      if (!spec || typeof spec !== "object") return;
+      const offset = spec.offset | 0;
+      const count = (spec.count != null ? spec.count : 1) | 0 || 1;
+      const step = (spec.step != null ? spec.step : 4) | 0 || 4;
+      const fields = spec.fields || [];
+      const desc = spec.desc || "";
+      const itemsMeta = spec.items || [];
+      const regReset = spec.reset != null
+        ? ("0x" + (Number(spec.reset) >>> 0).toString(16))
+        : null;
+      const regWidth = spec.width != null ? (spec.width | 0) : null;
+      for (let i = 0; i < count; i++) {
+        const item = (itemsMeta[i] && typeof itemsMeta[i] === "object") ? itemsMeta[i] : {};
+        const itemName = item.name || "";
+        const itemDesc = item.desc || "";
+        const slotFields = fields.map((fd) => {
+          const copy = Object.assign({}, fd);
+          if (itemDesc) copy.desc = itemDesc;
+          return copy;
+        });
+        let slotName = count === 1 ? name : (name + "[" + i + "]");
+        if (itemName) slotName = count > 1 ? (slotName + "." + itemName) : itemName;
+        items.push({
+          name: slotName,
+          base_name: name,
+          index: count === 1 ? null : i,
+          offset: offset + i * step,
+          fields: slotFields,
+          desc: itemDesc || desc,
+          reg_reset: regReset,
+          reg_width: regWidth,
+        });
+      }
+    });
+    items.sort((a, b) => a.offset - b.offset || String(a.base_name).localeCompare(b.base_name));
+    return items;
+  }
+
+  function decodeRegisterFields(word, fields) {
+    const rows = [];
+    (fields || []).forEach((fd) => {
+      const b = parseBitsHiLo(fd.bits || [31, 0]);
+      const val = extractBits(word >>> 0, b.hi, b.lo);
+      const row = fieldRow(null, fd.name, b.hi, b.lo, b.width, val, fd.desc || "");
+      row.word_hex = "0x" + (word >>> 0).toString(16).padStart(8, "0");
+      if (fd.access) row.access = fd.access;
+      if (fd.type) row.type = fd.type;
+      if (fd.reset != null) {
+        const n = typeof fd.reset === "string" ? parseInt(fd.reset, 0) : (fd.reset | 0);
+        row.reset = "0x" + (n >>> 0).toString(16);
+      }
+      rows.push(row);
+    });
+    return rows;
+  }
+
+  function decodeStatisticsSection(sectionKey, words) {
+    const stats = L.statistics || {};
+    const key = String(sectionKey).toLowerCase();
+    if (!stats[key]) throw new Error("未知统计段: " + sectionKey);
+    const section = stats[key];
+    const slots = expandStatSlots(section);
+    const need = slots.length;
+    const errors = [];
+    if (need && words.length < need) errors.push("长度不足：需要 " + need + " 个 Domain，实际 " + words.length);
+    const registers = [];
+    const flat = [];
+    slots.forEach((slot, i) => {
+      if (i >= words.length) return;
+      const w = words[i] >>> 0;
+      const fields = decodeRegisterFields(w, slot.fields);
+      fields.forEach((f) => flat.push(Object.assign({}, f, { _reg: slot.name })));
+      const reg = {
+        name: slot.name,
+        base_name: slot.base_name,
+        index: slot.index,
+        offset: "0x" + slot.offset.toString(16),
+        word: "0x" + w.toString(16).padStart(8, "0"),
+        desc: slot.desc || "",
+        fields,
+      };
+      if (slot.reg_reset != null) reg.reset = slot.reg_reset;
+      if (slot.reg_width != null) reg.width = slot.reg_width;
+      registers.push(reg);
+    });
+    const extra = words.length > need
+      ? words.slice(need).map((w) => "0x" + (w >>> 0).toString(16).padStart(8, "0"))
+      : [];
+    if (extra.length) errors.push("多余 " + extra.length + " 个 Domain（yaml 定义 " + need + "）");
+    return {
+      kind: "statistics",
+      section: key,
+      title: section.title || key,
+      note: section.note || "",
+      word_count: words.length,
+      expected_count: need,
+      registers,
+      fields: flat,
+      extra_words: extra,
+      errors,
+    };
+  }
+
+  function decodeIparser(words) {
+    const layout = (IP_L.traces || {}).iparser_trace;
+    if (!layout) throw new Error("缺少 IPARSER_LAYOUTS.traces.iparser_trace");
+    return decodeTrace(words, layout);
+  }
+
+  function decodeEparser(words) {
+    const layout = (EP_L.traces || {}).eparser_trace;
+    if (!layout) throw new Error("缺少 EPARSER_LAYOUTS.traces.eparser_trace");
+    return decodeTrace(words, layout);
+  }
+
+  function decodePedt(words) {
+    const layout = (EP_L.traces || {}).pedt_trace;
+    if (!layout) throw new Error("缺少 EPARSER_LAYOUTS.traces.pedt_trace");
+    return decodeTrace(words, layout);
+  }
+
+  /** 为字段挂上所属 Domain 的原始 u32 hex */
+  function attachWordHex(decoded) {
+    if (!decoded || !decoded.fields) return decoded;
+    const words = decoded.words || [];
+    decoded.fields.forEach((f) => {
+      if (f.word_hex) return;
+      let idx = f.domain;
+      if (idx == null && f.domain_label) {
+        const m = String(f.domain_label).match(/D(\d+)/);
+        if (m) idx = +m[1];
+      }
+      if (idx == null) return;
+      const w = words[idx];
+      if (w == null) return;
+      f.word_hex = typeof w === "string" ? w : ("0x" + (w >>> 0).toString(16).padStart(8, "0"));
+    });
+    return decoded;
+  }
+
+  function decodeSegment(seg, words) {
+    const s = String(seg).toLowerCase().replace(/_trace$/, "");
+    if (STAT_ORDER.indexOf(s) >= 0 || (L.statistics && L.statistics[s])) {
+      return decodeStatisticsSection(s, words);
+    }
+    const vm = /^vme(\d)$/.exec(s);
+    if (s === "vme" || vm) return decodeVme(words, vm ? +vm[1] : null);
+    const map = {
+      cls: "cls_trace",
+      keygen: "keygen_trace",
+      lrr: "lrr_trace",
+      llr: "lrr_trace",
+      egr: "egr_trace",
+    };
+    const key = map[s];
+    if (!key || !L.traces[key]) throw new Error("未知子段: " + seg);
+    const out = decodeTrace(words, L.traces[key]);
+    if (s === "keygen") {
+      try {
+        out.mau_mpl_req_data = previewMplReqFromKeygen(words);
+      } catch (e) {
+        out.errors = (out.errors || []).concat(["mau_mpl_req_data: " + e.message]);
+      }
+      try {
+        out.lpm_mpl_req_data = previewLpmReqFromKeygen(words);
+      } catch (e) {
+        out.errors = (out.errors || []).concat(["lpm_mpl_req_data: " + e.message]);
+      }
+    }
+    if (s === "lrr" || s === "llr") {
+      try {
+        out.mau_mpl_rsp_data = previewMplRspFromLrr(words);
+      } catch (e) {
+        out.errors = (out.errors || []).concat(["mau_mpl_rsp_data: " + e.message]);
+      }
+    }
+    if (s === "egr") {
+      try {
+        out.lpm_mpl_rsp_data = previewLpmRspFromEgr(words);
+      } catch (e) {
+        out.errors = (out.errors || []).concat(["lpm_mpl_rsp_data: " + e.message]);
+      }
+    }
+    return out;
+  }
+
+  function mauDirection(i) {
+    if (IPP.indexOf(i) >= 0) return "ipp";
+    if (EPP.indexOf(i) >= 0) return "epp";
+    throw new Error("mau 索引越界: " + i);
+  }
+
+  /* ---------- log parse ---------- */
+  const BLOCK_RE = /----\s*(.+?)\s+(start|end)\s*----/gi;
+
+  function extractDumpRegions(text, module) {
+    const mod = String(module).toLowerCase();
+    const startRe = new RegExp(
+      "======\\s*" + mod + "\\s+register\\s+dump\\s+start(?:\\s*\\([^)]*\\))?\\s*======",
+      "gi"
+    );
+    const endRe = new RegExp(
+      "======\\s*" + mod + "\\s+register\\s+dump\\s+end(?:\\s*\\([^)]*\\))?\\s*======",
+      "gi"
+    );
+    const starts = [];
+    let m;
+    while ((m = startRe.exec(text))) starts.push(m);
+    const ends = [];
+    while ((m = endRe.exec(text))) ends.push(m);
+    const regions = [];
+    let ei = 0;
+    starts.forEach((sm, si) => {
+      while (ei < ends.length && ends[ei].index <= sm.index) ei++;
+      if (ei >= ends.length) return;
+      const em = ends[ei];
+      regions.push({
+        name: mod + "_dump#" + si,
+        text: text.slice(sm.index + sm[0].length, em.index),
+        kind: "dump",
+        start: sm.index + sm[0].length,
+        end: em.index,
+      });
+      ei++;
+    });
+    return regions;
+  }
+
+  function collectModuleWords(text, module) {
+    const prefix = String(module).toLowerCase();
+    const dumps = extractDumpRegions(text, prefix);
+    if (dumps.length) {
+      const out = [];
+      dumps.forEach((d) => {
+        try {
+          const words = parseU32Tokens(d.text);
+          if (words.length) out.push({ label: d.name, words });
+        } catch (e) { /* skip empty/invalid region */ }
+      });
+      if (out.length) return out;
+    }
+    const blocks = extractBlocks(text);
+    const whole = [];
+    const childWords = [];
+    let childCount = 0;
+    blocks.forEach((b) => {
+      const nl = String(b.name || "").toLowerCase().trim();
+      if (nl === prefix || nl === prefix + "_trace") {
+        try {
+          const words = parseU32Tokens(b.text);
+          if (words.length) whole.push({ label: b.name, words });
+        } catch (e) { /* skip */ }
+        return;
+      }
+      if (nl.indexOf(prefix + " ") === 0) {
+        try {
+          const words = parseU32Tokens(b.text);
+          if (words.length) {
+            childWords.push.apply(childWords, words);
+            childCount++;
+          }
+        } catch (e) { /* skip */ }
+      }
+    });
+    if (whole.length) return whole;
+    if (childWords.length) {
+      return [{ label: prefix + "_regs(" + childCount + ")", words: childWords }];
+    }
+    return [];
+  }
+
+  function extractBlocks(text) {
+    const matches = [];
+    let m;
+    const re = new RegExp(BLOCK_RE.source, "gi");
+    while ((m = re.exec(text))) {
+      matches.push({ name: m[1], kind: m[2].toLowerCase(), index: m.index, end: re.lastIndex });
+    }
+    if (!matches.length) {
+      return [{ name: "raw", text, kind: "raw", start: 0, end: text.length }];
+    }
+    const stack = [];
+    const blocks = [];
+    matches.forEach((mk) => {
+      if (mk.kind === "start") stack.push({ name: mk.name, contentStart: mk.end });
+      else {
+        for (let i = stack.length - 1; i >= 0; i--) {
+          if (stack[i].name.toLowerCase() === mk.name.toLowerCase()) {
+            const s = stack.splice(i, 1)[0];
+            blocks.push({
+              name: s.name,
+              text: text.slice(s.contentStart, mk.index),
+              kind: "block",
+              start: s.contentStart,
+              end: mk.index,
+            });
+            break;
+          }
+        }
+      }
+    });
+    return blocks;
+  }
+
+  function normalizeSeg(name) {
+    let n = name.trim().toLowerCase();
+    if (n.endsWith("_trace")) n = n.slice(0, -6);
+    if (STAT_ORDER.indexOf(n) >= 0) return n;
+    if (n === "llr") return "lrr";
+    if (["cls", "keygen", "egr", "lrr"].indexOf(n) >= 0) return n;
+    const vm = /^vme(\d)$/.exec(n);
+    if (vm) return "vme" + vm[1];
+    return n;
+  }
+
+  function parseLog(text) {
+    const blocks = extractBlocks(text);
+    const errors = [];
+    const mauSpans = [];
+    blocks.forEach((b) => {
+      const mm = /^mau(\d+)$/i.exec(b.name);
+      if (mm && b.kind === "block") mauSpans.push({ mau: +mm[1], start: b.start, end: b.end });
+    });
+
+    const mauData = {};
+    mauSpans.forEach((s) => { mauData[s.mau] = { trace: {}, statistics: {} }; });
+    const orphans = [];
+
+    function owningMau(pos) {
+      for (let i = 0; i < mauSpans.length; i++) {
+        const s = mauSpans[i];
+        if (pos >= s.start && pos < s.end) return s.mau;
+      }
+      return null;
+    }
+
+    const mplRaw = [];
+    const iparserRaw = [];
+
+    blocks.forEach((b) => {
+      if (/^mau\d+$/i.test(b.name)) return;
+      if (/^mpl(?:_trace|_req|_dump)?$/i.test(b.name)) {
+        try { mplRaw.push({ label: b.name, words: parseU32Tokens(b.text) }); }
+        catch (e) { errors.push("mpl: " + e.message); }
+        return;
+      }
+      if (/^iparser(?:_trace)?$/i.test(b.name)) {
+        try { iparserRaw.push({ label: b.name, words: parseU32Tokens(b.text) }); }
+        catch (e) { errors.push("iparser: " + e.message); }
+        return;
+      }
+      if (/^(?:eparser|pedt)(?:_trace)?(?:\s|$)/i.test(b.name)) return;
+      if (/^(?:mau_)?statistics$/i.test(b.name)) return;
+      const seg = normalizeSeg(b.name);
+      if (seg === "raw") {
+        try { orphans.push({ name: "raw", words: parseU32Tokens(b.text) }); }
+        catch (e) { errors.push(e.message); }
+        return;
+      }
+      const isStat = STAT_ORDER.indexOf(seg) >= 0;
+      if (["cls","keygen","lrr","egr"].indexOf(seg) >= 0 || /^vme\d$/.test(seg) || isStat) {
+        let words = [];
+        try {
+          if (String(b.text || "").trim()) words = parseU32Tokens(b.text);
+        } catch (e) {
+          if (!isStat) { errors.push(b.name + ": " + e.message); return; }
+        }
+        const owner = owningMau(b.start || 0);
+        const meta = {
+          label: b.name, words, word_count: words.length,
+          category: isStat ? "statistics" : "trace",
+        };
+        const bucket = isStat ? "statistics" : "trace";
+        const keyName = seg;
+        if (owner == null) orphans.push({ name: keyName, ...meta });
+        else {
+          if (!mauData[owner]) mauData[owner] = { trace: {}, statistics: {} };
+          if (!mauData[owner].trace) mauData[owner] = { trace: mauData[owner].segments || {}, statistics: {} };
+          mauData[owner][bucket][keyName] = meta;
+        }
+      }
+    });
+
+    if (!Object.keys(mauData).length && !orphans.length && !mplRaw.length && !iparserRaw.length) {
+      try { orphans.push({ name: "raw", words: parseU32Tokens(text) }); }
+      catch (e) { errors.push(e.message); }
+    }
+
+    const ipp = {}, epp = {};
+    const mplList = [];
+
+    Object.keys(mauData).map(Number).sort((a,b)=>a-b).forEach((mauIdx) => {
+      let direction;
+      try { direction = mauDirection(mauIdx); }
+      catch (e) { errors.push(e.message); return; }
+      const info = mauData[mauIdx];
+      // normalize legacy shape
+      const traceMap = info.trace || info.segments || {};
+      const statMap = info.statistics || {};
+      const cats = { trace: {}, statistics: {} };
+      const flat = {};
+      Object.keys(traceMap).forEach((seg) => {
+        const meta = traceMap[seg];
+        try {
+          const entry = {
+            ...meta,
+            words_hex: (meta.words || []).map((w) => "0x" + (w >>> 0).toString(16).padStart(8, "0")),
+            decoded: decodeSegment(seg, meta.words),
+            category: "trace",
+          };
+          // Skip adding per-index dbg_hdr_info_x / dbg_psv_info_x as separate segments; they are shown as compact arrays
+          if (!/^dbg_(?:hdr_info|psv_info)_\d+$/i.test(seg)) {
+            cats.trace[seg] = entry;
+            flat[seg] = entry;
+          }
+        } catch (e) {
+          errors.push("mau" + mauIdx + "." + seg + ": " + e.message);
+          const entry = { ...meta, error: e.message, category: "trace" };
+          if (!/^dbg_(?:hdr_info|psv_info)_\d+$/i.test(seg)) {
+            cats.trace[seg] = entry;
+            flat[seg] = entry;
+          }
+        }
+      });
+      Object.keys(statMap).forEach((seg) => {
+        const meta = statMap[seg];
+        const words = meta.words || [];
+        let entry;
+        try {
+          entry = {
+            ...meta,
+            words_hex: words.map((w) => "0x" + (w >>> 0).toString(16).padStart(8, "0")),
+            decoded: words.length ? decodeStatisticsSection(seg, words) : {
+              kind: "statistics", section: seg, title: seg, registers: [], fields: [], errors: ["空输入"],
+            },
+            category: "statistics",
+          };
+        } catch (e) {
+          errors.push("mau" + mauIdx + "." + seg + ": " + e.message);
+          entry = { ...meta, error: e.message, category: "statistics" };
+        }
+        // Skip per-index dbg_hdr_info_x / dbg_psv_info_x statistics entries
+        if (!/^dbg_(?:hdr_info|psv_info)_\d+$/i.test(seg)) {
+          cats.statistics[seg] = entry;
+          flat["stat:" + seg] = entry;
+        }
+      });
+      const node = { mau: mauIdx, direction, categories: cats, segments: flat };
+      (direction === "ipp" ? ipp : epp)["mau" + mauIdx] = node;
+    });
+
+    mplRaw.forEach((raw, i) => {
+      try {
+        mplList.push({
+          source: raw.label || ("mpl#" + i),
+          decoded: decodeMpl(raw.words),
+          word_count: raw.words.length,
+        });
+      } catch (e) { errors.push("mpl[" + i + "]: " + e.message); }
+    });
+
+    const iparserList = [];
+    iparserRaw.forEach((raw, i) => {
+      try {
+        iparserList.push({
+          source: raw.label || ("iparser#" + i),
+          decoded: decodeIparser(raw.words),
+          word_count: raw.words.length,
+          words_hex: raw.words.map((w) => "0x" + (w >>> 0).toString(16).padStart(8, "0")),
+        });
+      } catch (e) { errors.push("iparser[" + i + "]: " + e.message); }
+    });
+
+    const eparserList = [];
+    collectModuleWords(text, "eparser").forEach((raw, i) => {
+      try {
+        eparserList.push({
+          source: raw.label || ("eparser#" + i),
+          decoded: decodeEparser(raw.words),
+          word_count: raw.words.length,
+          words_hex: raw.words.map((w) => "0x" + (w >>> 0).toString(16).padStart(8, "0")),
+        });
+      } catch (e) { errors.push("eparser[" + i + "]: " + e.message); }
+    });
+
+    const pedtList = [];
+    collectModuleWords(text, "pedt").forEach((raw, i) => {
+      try {
+        pedtList.push({
+          source: raw.label || ("pedt#" + i),
+          decoded: decodePedt(raw.words),
+          word_count: raw.words.length,
+          words_hex: raw.words.map((w) => "0x" + (w >>> 0).toString(16).padStart(8, "0")),
+        });
+      } catch (e) { errors.push("pedt[" + i + "]: " + e.message); }
+    });
+
+    return {
+      modules: {
+        mpl: mplList,
+        mau: {
+          ipp, epp,
+          expected_ipp: IPP.map((i) => "mau" + i),
+          expected_epp: EPP.map((i) => "mau" + i),
+        },
+        iparser: iparserList,
+        eparser: eparserList,
+        pedt: pedtList,
+      },
+      orphans,
+      errors,
+    };
+  }
+
+  /* ---------- UI ---------- */
+  const $ = (id) => document.getElementById(id);
+  function setStatus(msg, cls) {
+    const el = $("parseStatus");
+    el.textContent = msg || "";
+    el.className = "status" + (cls ? " " + cls : "");
+  }
+
+  function setBar(msg) {
+    $("statusBar").textContent = msg;
+  }
+
+  function collectFields(decoded) {
+    if (!decoded) return [];
+    if (decoded.fields) return decoded.fields.slice();
+    let out = [];
+    if (decoded.lama && decoded.lama.fields) {
+      out = out.concat(decoded.lama.fields.map((f) => ({ ...f, _group: "lama" })));
+    }
+    if (decoded.lamb && decoded.lamb.fields) {
+      out = out.concat(decoded.lamb.fields.map((f) => ({ ...f, _group: "lamb" })));
+    }
+    return out;
+  }
+
+  function groupFieldsByDomain(fields) {
+    const groups = [];
+    (fields || []).forEach((f) => {
+      const key = f.domain == null
+        ? ("c:" + (f.domain_label || "_payload"))
+        : ("d:" + f.domain);
+      const last = groups[groups.length - 1];
+      if (last && last.key === key) last.fields.push(f);
+      else groups.push({ key, domain: f.domain, fields: [f] });
+    });
+    return groups;
+  }
+
+  function inferRegName(fields, fallback) {
+    const names = (fields || []).map((f) => String(f.name || ""));
+    if (!names.length) return fallback || "fields";
+    if (names.length === 1) return names[0];
+    let p = names[0];
+    names.slice(1).forEach((n) => {
+      while (p && n.indexOf(p) !== 0) p = p.slice(0, -1);
+    });
+    p = p.replace(/[_\s\[]+$/, "");
+    if (p) return p;
+    if (fields[0].domain != null) return "D" + fields[0].domain;
+    return fallback || "fields";
+  }
+
+  function fieldVisible(f, filter, groupName) {
+    if ($("hideRsv").checked && f.reserved) return false;
+    if (!filter) return true;
+    if (groupName && groupName.toLowerCase().indexOf(filter) >= 0) return true;
+    const blob = (String(f.name || "") + " " + String(f.desc || "")).toLowerCase();
+    return blob.indexOf(filter) >= 0;
+  }
+
+  function visibleFields(fields, groupName) {
+    const filter = ($("fieldFilter").value || "").trim().toLowerCase();
+    return (fields || []).filter((f) => fieldVisible(f, filter, groupName));
+  }
+
+  function renderSeg(summaryHtml, bodyHtml, open) {
+    return '<details class="seg"' + (open === false ? "" : " open") + "><summary>" +
+      summaryHtml + '</summary><div class="seg-body">' + (bodyHtml || "") + "</div></details>";
+  }
+
+  function renderGroupSummary(name, fields, extraMeta) {
+    const f0 = fields[0] || {};
+    const dom = f0.domain_label || (f0.domain == null ? "" : "D" + f0.domain);
+    const raw = f0.word_hex || "";
+    let s = '<span class="reg-name">' + escapeHtml(name) + "</span>";
+    if (dom) s += ' <span class="c-meta">· Domain ' + escapeHtml(String(dom)) + "</span>";
+    if (raw) s += ' <span class="c-hex">' + escapeHtml(raw) + "</span>";
+    s += ' <span class="c-meta">· ' + fields.length + " fields</span>";
+    if (extraMeta) s += ' <span class="c-meta">· ' + extraMeta + "</span>";
+    return s;
+  }
+
+  function wordBinFromHex(hex) {
+    if (!hex || hex === "—") return "";
+    const n = parseInt(String(hex), 16);
+    if (!Number.isFinite(n)) return "";
+    return "0b" + (n >>> 0).toString(2).padStart(32, "0");
+  }
+
+  function hexCell(text, bin, extraClass) {
+    const val = text || "—";
+    if (!bin) return '<td class="' + extraClass + '">' + escapeHtml(val) + "</td>";
+    return '<td class="' + extraClass + '">' +
+      '<span class="hex-toggle" title="点击显示/隐藏二进制">' + escapeHtml(val) + "</span>" +
+      '<div class="bin-reveal">' + escapeHtml(bin) + "</div></td>";
+  }
+
+  function isHiddenDbgVectorFieldName(name) {
+    return /^dbg_(?:hdr_info|psv_info)_(?:\d+)$/i.test(String(name || ""));
+  }
+
+  function renderFieldTable(fields, title) {
+    const rows = (fields || []).filter((f) => !isHiddenDbgVectorFieldName(String(f.name || "")));
+    let html = "";
+    if (title) html += '<div class="meta">' + escapeHtml(title) + "</div>";
+    html += '<table class="fields"><colgroup>';
+    html += '<col class="c-idx"><col class="c-dom"><col class="c-raw"><col class="c-field">';
+    html += '<col class="c-bits"><col class="c-w"><col class="c-hex"><col class="c-dec"><col class="c-desc">';
+    html += "</colgroup><thead><tr>";
+    html += "<th>Idx</th><th>Domain</th><th>Raw Word</th><th>Field</th><th>Bits</th><th>Width</th>";
+    html += "<th>Hex</th><th>Dec</th><th>Description</th>";
+    html += "</tr></thead><tbody>";
+    rows.forEach((f, idx) => {
+      const cls = (f.reserved ? "rsv" : "") + (f.highlight ? " highlight" : "");
+      const trCls = cls ? ' class="' + cls.trim() + '"' : "";
+      const dom = f.domain_label || (f.domain == null ? "—" : "D" + f.domain);
+      const fname = String(f.name || "");
+      html += "<tr" + trCls + ">";
+      html += '<td class="c-idx">' + idx + "</td>";
+      html += '<td class="c-dom" title="' + escapeHtml(String(dom)) + '">' + escapeHtml(String(dom)) + "</td>";
+      html += hexCell(f.word_hex || "—", wordBinFromHex(f.word_hex), "c-raw");
+      html += '<td class="c-field" title="' + escapeHtml(fname) + '">' + escapeHtml(fname) +
+        (f._group ? ' <span class="c-meta">(' + escapeHtml(f._group) + ")</span>" : "") + "</td>";
+      html += '<td class="c-bits" title="' + escapeHtml(f.bits || "") + '">' + escapeHtml(f.bits) + "</td>";
+      html += '<td class="c-w">' + f.width + "</td>";
+      html += hexCell(f.value_hex_words || f.value_hex, f.value_bin || "", "c-hex");
+      html += '<td class="c-dec">' + escapeHtml(String(f.value_dec)) + "</td>";
+      html += '<td class="c-desc">' + escapeHtml(f.desc || "") + "</td>";
+      html += "</tr>";
+    });
+    html += "</tbody></table>";
+    return html;
+  }
+
+  function detectWordArray(fields) {
+    if (!fields || !fields.length) return null;
+    const entries = [];
+    for (let i = 0; i < fields.length; i++) {
+      const f = fields[i];
+      const name = String(f.name || "");
+      const m = /^(dbg_(?:hdr_info|psv_info))_(\d+)$/i.exec(name);
+      if (!m) return null;
+      entries.push({ name: m[1], index: Number(m[2]), field: f });
+    }
+    const base = entries[0].name;
+    const count = entries.length;
+    if (count < 2) return null;
+    if (!entries.every((e) => e.name === base)) return null;
+    entries.sort((a, b) => a.index - b.index);
+    for (let i = 0; i < entries.length; i++) {
+      if (entries[i].index !== i) return null;
+    }
+    return { base, entries, count };
+  }
+
+  function groupFieldsByBaseName(fields) {
+    const groups = [];
+    const map = new Map();
+    (fields || []).forEach((f) => {
+      const name = String(f.name || "");
+      const m = /^(dbg_(?:hdr_info|psv_info))_(\d+)$/i.exec(name);
+      if (!m) {
+        const key = name || "__single__" + groups.length;
+        if (!map.has(key)) map.set(key, { key, name: key, fields: [] });
+        map.get(key).fields.push(f);
+        return;
+      }
+      const base = m[1];
+      if (!map.has(base)) map.set(base, { key: base, name: base, fields: [] });
+      map.get(base).fields.push(f);
+    });
+    map.forEach((g) => groups.push(g));
+    return groups;
+  }
+
+  function renderWordArrayTable(fields, title) {
+    const info = detectWordArray(fields || []);
+    if (!info) return renderFieldTable(fields || [], title);
+    const isHdr = /^dbg_hdr_info$/i.test(String(title || info.base || ''));
+    const isPsv = /^dbg_psv_info$/i.test(String(title || info.base || ''));
+    const rowSize = isHdr ? 2 : 8;
+    function renderU32Bytes(entry, littleEndian, bytesSeparated) {
+      const f = entry && entry.field;
+      if (!f) return '—';
+      const words = Array.isArray(f.value_hex_words) ? f.value_hex_words : [f.value_hex || '—'];
+      const rendered = words.map((w) => {
+        const s = String(w || '').trim();
+        if (!/^0x[0-9a-fA-F]+$/i.test(s)) return s || '—';
+        const n = parseInt(s, 16) >>> 0;
+        const bytes = littleEndian ? [n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff]
+          : [(n >>> 24) & 0xff, (n >>> 16) & 0xff, (n >>> 8) & 0xff, n & 0xff];
+        const byteStr = bytes.map((b) => ('00' + b.toString(16).toUpperCase()).slice(-2));
+        return bytesSeparated ? byteStr.join(' ') : byteStr.join('');
+      }).join('  ');
+      return rendered;
+    }
+    let html = '<div class="meta">' + escapeHtml(title || info.base) + ' · ' + info.count + '×u32</div>';
+    html += '<table class="fields compact-hex' + (isHdr ? ' compact-hdr' : '') + '"><tbody>';
+    const entriesList = isPsv ? info.entries.slice().reverse() : info.entries;
+    for (let row = 0; row < entriesList.length; row += rowSize) {
+      const chunk = entriesList.slice(row, row + rowSize);
+      html += '<tr>';
+      chunk.forEach((entry) => {
+        if (!entry) {
+          html += '<td class="c-hex compact">—</td>';
+          return;
+        }
+        const value = isHdr ? renderU32Bytes(entry, false, true) : renderU32Bytes(entry, true, false);
+        html += '<td class="c-hex compact">' + escapeHtml(value) + '</td>';
+      });
+      while (chunk.length < rowSize) {
+        html += '<td class="c-hex compact">—</td>';
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table>';
+    return html;
+  }
+
+  function renderFieldGroups(fields, fallbackName) {
+    const domainGroups = groupFieldsByDomain(fields || []);
+    const baseGroups = groupFieldsByBaseName(fields || []);
+    const arrayGroups = baseGroups.filter((g) => detectWordArray(g.fields || []));
+    const visibleNormalGroups = domainGroups.filter((g) => {
+      const arr = g.fields || [];
+      return !arr.some((f) => isHiddenDbgVectorFieldName(String(f.name || ""))) && !detectWordArray(arr);
+    });
+    const groups = arrayGroups.length ? arrayGroups.concat(visibleNormalGroups) : domainGroups;
+    if (!groups.length) {
+      return renderSeg(
+        '<span class="reg-name">' + escapeHtml(fallbackName || "fields") + "</span>",
+        renderFieldTable([], "")
+      );
+    }
+    let html = "";
+    groups.forEach((g) => {
+      const fieldsInGroup = g.fields || [];
+      const name = inferRegName(fieldsInGroup, fallbackName);
+      const vis = visibleFields(fieldsInGroup, name);
+      if (!vis.length) return;
+      if (detectWordArray(vis)) {
+        html += renderSeg(renderGroupSummary(name, vis), renderWordArrayTable(vis, name));
+      } else {
+        html += renderSeg(renderGroupSummary(name, vis), renderFieldTable(vis, ""));
+      }
+    });
+    return html;
+  }
+
+  function setViewStats(decoded, fields) {
+    const el = $("viewStats");
+    if (!el) return;
+    const list = fields || [];
+    let regs = 0;
+    if (decoded && decoded.registers) regs = decoded.registers.length;
+    else if (decoded && (decoded.lama || decoded.lamb)) {
+      regs = groupFieldsByDomain((decoded.lama && decoded.lama.fields) || []).length
+        + groupFieldsByDomain((decoded.lamb && decoded.lamb.fields) || []).length;
+    } else regs = groupFieldsByDomain(list).length;
+    const words = (decoded && (decoded.word_count || (decoded.words && decoded.words.length))) || 0;
+    const nz = list.filter((f) => {
+      const v = f.value;
+      if (typeof v === "bigint") return v !== 0n;
+      return (Number(v) || 0) !== 0;
+    }).length;
+    el.innerHTML =
+      "Registers: <span class=\"num\">" + regs + "</span>" +
+      "<span class=\"sep\"> | </span>Words: <span class=\"num\">" + words + "</span>" +
+      "<span class=\"sep\"> | </span>Fields: <span class=\"num\">" + list.length + "</span>" +
+      "<span class=\"sep\"> | </span>Non-zero: <span class=\"num\">" + nz + "</span>";
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    })[c]);
+  }
+
+  function renderHexBlobs(blobs) {
+    if (!blobs || !blobs.length) return "";
+    let html = "";
+    blobs.forEach((b) => {
+      html += '<div class="hex-blob">';
+      html += '<div class="hex-blob-title">' + escapeHtml(b.label || b.name || "hex") +
+        " · " + (b.word_count || 0) + "×u32（空格分隔）</div>";
+      html += '<pre class="hex-blob-body">' + escapeHtml(b.hex_line || "") + "</pre>";
+      html += "</div>";
+    });
+    return html;
+  }
+
+  function renderPawTable(pawRows) {
+    if (!pawRows || !pawRows.length) return "";
+    let html = '<div class="paw-hint">Paw：每行 4×u32，顺序与 yaml 一致（[31:0] → [127:96]）</div>';
+    html += '<table class="paw-table"><thead><tr><th>Name</th><th>[31:0]</th><th>[63:32]</th><th>[95:64]</th><th>[127:96]</th></tr></thead><tbody>';
+    pawRows.forEach((row) => {
+      const cells = row.words_hex.slice();
+      while (cells.length < 4) cells.push("—");
+      html += "<tr><td class=\"paw-name\">" + escapeHtml(row.name) + "</td>";
+      cells.slice(0, 4).forEach((c) => { html += "<td>" + escapeHtml(c) + "</td>"; });
+      html += "</tr>";
+    });
+    html += "</tbody></table>";
+    return html;
+  }
+
+  function renderCtnU16Pairs(pairs) {
+    if (!pairs || !pairs.length) return "";
+    const filter = ($("fieldFilter").value || "").trim().toLowerCase();
+    let html = '<div class="paw-hint">ctn_u16：每行一对 en[i] ↔ val[i]，共 ' + pairs.length + " 组</div>";
+    html += '<table class="fields ctn-pair"><thead><tr>';
+    html += "<th>Idx</th><th>Pair</th>";
+    html += "<th>en Domain</th><th>en Bits</th><th>en Hex</th><th>en Dec</th>";
+    html += "<th>val Domain</th><th>val Bits</th><th>val Hex</th><th>val Dec</th>";
+    html += "</tr></thead><tbody>";
+    let shown = 0;
+    pairs.forEach((p) => {
+      const label = "ctn_u16[" + p.index + "]";
+      const en = p.en || {};
+      const val = p.val || {};
+      const blob = (label + " " + (en.desc || "") + " " + (val.desc || "")).toLowerCase();
+      if (filter && blob.indexOf(filter) < 0) return;
+      shown++;
+      const enDom = en.domain == null ? "—" : "D" + en.domain;
+      const valDom = val.domain == null ? "—" : "D" + val.domain;
+      html += "<tr>";
+      html += '<td class="c-idx">' + p.index + "</td>";
+      html += '<td class="pair-name">' + escapeHtml(label) + "</td>";
+      html += '<td class="c-dom">' + escapeHtml(enDom) + "</td>";
+      html += '<td class="c-bits">' + escapeHtml(en.bits || "—") + "</td>";
+      html += hexCell(en.value_hex || "—", en.value_bin || "", "c-hex");
+      html += '<td class="c-dec">' + escapeHtml(en.value_dec != null ? String(en.value_dec) : "—") + "</td>";
+      html += '<td class="c-dom">' + escapeHtml(valDom) + "</td>";
+      html += '<td class="c-bits">' + escapeHtml(val.bits || "—") + "</td>";
+      html += hexCell(val.value_hex || "—", val.value_bin || "", "c-hex");
+      html += '<td class="c-dec">' + escapeHtml(val.value_dec != null ? String(val.value_dec) : "—") + "</td>";
+      html += "</tr>";
+    });
+    html += "</tbody></table>";
+    if (!shown) return "";
+    return html;
+  }
+
+  function flattenCtnPairs(pairs) {
+    const out = [];
+    (pairs || []).forEach((p) => {
+      if (p.en) out.push(p.en);
+      if (p.val) out.push(p.val);
+    });
+    return out;
+  }
+
+  function renderHalf(half) {
+    let html = "";
+    html += renderFieldGroups(half.fields || [], half.title || "fields");
+    if (half.paw_rows && half.paw_rows.length) {
+      html += renderSeg(
+        '<span class="reg-name">Paw</span> <span class="c-meta">· 4×u32 / 行</span>',
+        renderPawTable(half.paw_rows)
+      );
+    }
+    if (half.hex_blobs && half.hex_blobs.length) html += renderHexBlobs(half.hex_blobs);
+    return html;
+  }
+
+  function renderDecodedBlock(decoded, extra) {
+    if (!decoded) {
+      setViewStats(null, []);
+      return '<div class="placeholder">无数据</div>';
+    }
+    if (decoded.error) {
+      setViewStats(null, []);
+      return '<div class="status err">' + escapeHtml(decoded.error) + "</div>";
+    }
+    let html = "";
+    if (extra) html += extra;
+    if (decoded.kind === "statistics" || decoded.registers) {
+      if (decoded.note) html += '<div class="meta">' + escapeHtml(decoded.note) + "</div>";
+      html += '<div class="meta">' + escapeHtml(decoded.title || decoded.section || "") +
+        " · " + (decoded.word_count || 0) + "/" + (decoded.expected_count || "?") + " Domain</div>";
+      (decoded.registers || []).forEach((reg) => {
+        const vis = visibleFields(reg.fields || [], reg.name);
+        if (!vis.length) return;
+        let sum = '<span class="reg-name">' + escapeHtml(reg.name) + "</span>";
+        if (reg.offset) sum += ' @ <span class="c-addr">' + escapeHtml(reg.offset) + "</span>";
+        if (reg.word) sum += ' = <span class="c-hex">' + escapeHtml(reg.word) + "</span>";
+        if (reg.reset != null) sum += ' <span class="c-meta">· reset ' + escapeHtml(reg.reset) + "</span>";
+        if (reg.desc) sum += ' <span class="c-meta">· ' + escapeHtml(reg.desc) + "</span>";
+        html += renderSeg(sum, renderFieldTable(vis, ""));
+      });
+      if (decoded.extra_words && decoded.extra_words.length) {
+        html += '<div class="meta">多余 Domain: <span class="c-hex">' +
+          escapeHtml(decoded.extra_words.join(" ")) + "</span></div>";
+      }
+      if (decoded.errors && decoded.errors.length) {
+        html += '<div class="status warn">' + escapeHtml(decoded.errors.join("\n")) + "</div>";
+      }
+      state.lastFields = decoded.fields || [];
+      setViewStats(decoded, state.lastFields);
+      return html;
+    }
+    if (decoded.lama || decoded.lamb) {
+      html += renderSeg('<span class="reg-name">lama</span>', renderHalf(decoded.lama || {}));
+      html += renderSeg('<span class="reg-name">lamb</span>', renderHalf(decoded.lamb || {}));
+      state.lastFields = collectFields(decoded);
+    } else {
+      const enables = decoded.enable_fields || [];
+      if (enables.length) {
+        const visEn = visibleFields(enables, "读使能");
+        if (visEn.length) {
+          html += renderSeg(
+            '<span class="reg-name">读使能</span>',
+            renderFieldTable(visEn, "")
+          );
+        }
+      }
+      if (decoded.ctn_u16_pairs && decoded.ctn_u16_pairs.length) {
+        html += renderSeg(
+          '<span class="reg-name">ctn_u16</span> <span class="c-meta">· en[i] ↔ val[i] · ' +
+            decoded.ctn_u16_pairs.length + " pairs</span>",
+          renderCtnU16Pairs(decoded.ctn_u16_pairs)
+        );
+      }
+      html += renderFieldGroups(decoded.fields || [], decoded.title || "fields");
+      if (decoded.paw_rows && decoded.paw_rows.length) {
+        html += renderSeg(
+          '<span class="reg-name">Paw</span> <span class="c-meta">· 4×u32 / 行</span>',
+          renderPawTable(decoded.paw_rows)
+        );
+      }
+      if (decoded.lur_blobs && decoded.lur_blobs.length) {
+        html += renderSeg(
+          '<span class="reg-name">Lur</span> <span class="c-meta">· 298bit hex 概览（字段见 mau_mpl_rsp_data）</span>',
+          renderHexBlobs(decoded.lur_blobs)
+        );
+      }
+      const otherBlobs = (decoded.hex_blobs || []).filter(
+        (b) => !/^lur-/i.test(String(b.name || ""))
+      );
+      if (otherBlobs.length) html += renderHexBlobs(otherBlobs);
+      state.lastFields = flattenCtnPairs(decoded.ctn_u16_pairs).concat(decoded.fields || []);
+      if (decoded.errors && decoded.errors.length) {
+        html += '<div class="status warn">' + escapeHtml(decoded.errors.join("\n")) + "</div>";
+      }
+    }
+    ["mau_mpl_req_data", "mau_mpl_rsp_data", "lpm_mpl_req_data", "lpm_mpl_rsp_data"].forEach((key) => {
+      if (!decoded[key]) return;
+      html += renderPayloadSeg(decoded[key], key);
+      state.lastFields = (state.lastFields || []).concat(decoded[key].fields || []);
+    });
+    setViewStats(decoded, state.lastFields);
+    return html;
+  }
+
+  function renderPayloadSeg(p, name) {
+    if (!p) return "";
+    let body = "";
+    if (p.note) body += '<div class="meta">' + escapeHtml(p.note) + "</div>";
+    if (p.hex_blobs && p.hex_blobs.length) body += renderHexBlobs(p.hex_blobs);
+    const enables = p.enable_fields || (p.fields || []).filter((f) => f.highlight === "enable");
+    if (enables.length) {
+      const visEn = visibleFields(enables, "读使能");
+      if (visEn.length) {
+        body += renderSeg(
+          '<span class="reg-name">读使能</span>',
+          renderFieldTable(visEn, "")
+        );
+      }
+    }
+    body += renderFieldGroups(p.fields || [], p.title || name);
+    let sum = '<span class="reg-name">' + escapeHtml(name) + "</span>";
+    if (p.width) sum += ' <span class="c-meta">· ' + p.width + "bit</span>";
+    if (p.bitvec_hex && !(p.hex_blobs && p.hex_blobs.length)) {
+      sum += ' <span class="c-hex">' + escapeHtml(p.bitvec_hex) + "</span>";
+    }
+    return renderSeg(sum, body);
+  }
+
+  function renderMauBranch(node, i) {
+    const cats = (node && node.categories) || { trace: node && node.segments || {}, statistics: {} };
+    const trace = cats.trace || {};
+    const stats = cats.statistics || {};
+    const has = Object.keys(trace).length + Object.keys(stats).length;
+    let html = "<details" + (has ? " open" : "") + "><summary>mau" + i + (has ? "" : " · 空") + "</summary>";
+    html += "<details open><summary>trace</summary>";
+    TRACE_ORDER.forEach((seg) => {
+      if (!trace[seg]) return;
+      html += '<button type="button" class="leaf" data-sel="mau:' + i + ":trace:" + seg + '">' + seg + "</button>";
+    });
+    html += "</details>";
+    const statKeys = STAT_ORDER.filter((s) => stats[s]).concat(Object.keys(stats).filter((s) => STAT_ORDER.indexOf(s) < 0));
+    html += "<details" + (statKeys.length ? " open" : "") + "><summary>统计</summary>";
+    if (!statKeys.length) {
+      html += '<div class="meta" style="padding:0.25rem 0.4rem;">（无统计数据）</div>';
+    } else {
+      statKeys.forEach((seg) => {
+        html += '<button type="button" class="leaf" data-sel="mau:' + i + ":stat:" + seg + '">' + seg + "</button>";
+      });
+    }
+    html += "</details></details>";
+    return html;
+  }
+
+  function renderNav() {
+    const root = $("navTree");
+    const r = state.result;
+    if (!r) { root.innerHTML = ""; return; }
+    let html = "";
+    const mau = r.modules.mau;
+    html += "<details open><summary>mau · ipp</summary>";
+    IPP.forEach((i) => { html += renderMauBranch(mau.ipp["mau" + i], i); });
+    html += "</details>";
+    html += "<details open><summary>mau · epp</summary>";
+    EPP.forEach((i) => { html += renderMauBranch(mau.epp["mau" + i], i); });
+    html += "</details>";
+
+    html += "<details open><summary>mpl（独立模块）</summary>";
+    if (r.modules.mpl && r.modules.mpl.length) {
+      r.modules.mpl.forEach((m, idx) => {
+        html += '<button type="button" class="leaf" data-sel="mpl:' + idx + '">' +
+          escapeHtml(m.source || ("mpl#" + idx)) + "</button>";
+      });
+    } else {
+      html += '<div class="meta" style="padding:0.25rem 0.4rem;">无 mpl 块（用模块=mpl 粘贴，或日志 ---- mpl start ----）</div>';
+    }
+    html += "</details>";
+
+    html += "<details open><summary>iparser</summary>";
+    const ipList = Array.isArray(r.modules.iparser) ? r.modules.iparser : [];
+    if (ipList.length) {
+      ipList.forEach((m, idx) => {
+        html += '<button type="button" class="leaf" data-sel="iparser:' + idx + '">' +
+          escapeHtml(m.source || ("iparser#" + idx)) + " (" + (m.word_count || 0) + ")</button>";
+      });
+    } else {
+      html += '<div class="meta" style="padding:0.25rem 0.4rem;">无 iparser 块（模块=iparser 粘贴，或 ---- iparser start ----）</div>';
+    }
+    html += "</details>";
+
+    html += "<details open><summary>eparser</summary>";
+    const epList = Array.isArray(r.modules.eparser) ? r.modules.eparser : [];
+    if (epList.length) {
+      epList.forEach((m, idx) => {
+        html += '<button type="button" class="leaf" data-sel="eparser:' + idx + '">' +
+          escapeHtml(m.source || ("eparser#" + idx)) + " (" + (m.word_count || 0) + ")</button>";
+      });
+    } else {
+      html += '<div class="meta" style="padding:0.25rem 0.4rem;">无 eparser 块（模块=eparser 粘贴，或 ====== eparser register dump =====）</div>';
+    }
+    html += "</details>";
+
+    html += "<details open><summary>pedt</summary>";
+    const pdList = Array.isArray(r.modules.pedt) ? r.modules.pedt : [];
+    if (pdList.length) {
+      pdList.forEach((m, idx) => {
+        html += '<button type="button" class="leaf" data-sel="pedt:' + idx + '">' +
+          escapeHtml(m.source || ("pedt#" + idx)) + " (" + (m.word_count || 0) + ")</button>";
+      });
+    } else {
+      html += '<div class="meta" style="padding:0.25rem 0.4rem;">无 pedt 块（模块=pedt 粘贴，或 ====== pedt register dump =====）</div>';
+    }
+    html += "</details>";
+
+    if (r.orphans && r.orphans.length) {
+      html += "<details open><summary>未归属 / 粘贴结果</summary>";
+      r.orphans.forEach((o, idx) => {
+        html += '<button type="button" class="leaf" data-sel="orphan:' + idx + '">' +
+          escapeHtml(o.name) + " (" + o.word_count + ")</button>";
+      });
+      html += "</details>";
+    }
+    root.innerHTML = html;
+    root.querySelectorAll("button.leaf").forEach((btn) => {
+      btn.addEventListener("click", () => selectNav(btn.getAttribute("data-sel"), btn));
+    });
+  }
+
+  function selectNav(sel, btn) {
+    $("navTree").querySelectorAll("button.leaf").forEach((b) => b.classList.remove("active"));
+    if (btn) btn.classList.add("active");
+    const parts = sel.split(":");
+    const r = state.result;
+    const view = $("viewRoot");
+
+    if (parts[0] === "mau") {
+      const mau = +parts[1];
+      const kind = parts[2]; // trace | stat
+      const seg = parts[3];
+      state.selection = { type: "mau", mau, kind, seg };
+      state.module = "mau";
+      syncModuleTab("mau");
+      const dir = mauDirection(mau);
+      const node = r.modules.mau[dir]["mau" + mau];
+      const bucket = kind === "stat" ? "statistics" : "trace";
+      const meta = (node.categories && node.categories[bucket] && node.categories[bucket][seg])
+        || node.segments[seg];
+      let extra = '<div class="meta">mau' + mau + " · " + dir + " · " + bucket + " · " + seg;
+      if (meta && meta.word_count != null) extra += " · " + meta.word_count + " Domain";
+      extra += "</div>";
+      if (!meta) {
+        view.innerHTML = '<div class="placeholder">无数据</div>';
+      } else if (meta.placeholder) {
+        view.innerHTML = extra + '<div class="placeholder">' + escapeHtml(meta.message || "统计格式待定义") + "</div>";
+        if (meta.words_hex && meta.words_hex.length) {
+          view.innerHTML += '<pre style="font-family:var(--mono);font-size:0.8rem;white-space:pre-wrap;">' +
+            escapeHtml(meta.words_hex.join(" ")) + "</pre>";
+        }
+      } else if (meta.error) {
+        view.innerHTML = '<div class="status err">' + escapeHtml(meta.error) + "</div>";
+      } else {
+        view.innerHTML = renderDecodedBlock(meta.decoded, extra);
+      }
+      setBar("mau" + mau + " / " + bucket + " / " + seg);
+      return;
+    }
+    if (parts[0] === "mpl") {
+      const idx = +parts[1];
+      state.selection = { type: "mpl", mplIndex: idx };
+      state.module = "mpl";
+      syncModuleTab("mpl");
+      const m = r.modules.mpl[idx];
+      view.innerHTML = renderDecodedBlock(m.decoded,
+        '<div class="meta">' + escapeHtml(m.source) +
+        (m.decoded.bitvec_hex ? " · " + escapeHtml(m.decoded.bitvec_hex) : "") + "</div>");
+      setBar("mpl · " + (m.source || idx));
+      return;
+    }
+    if (parts[0] === "iparser") {
+      const idx = +parts[1];
+      state.selection = { type: "iparser", iparserIndex: idx };
+      state.module = "iparser";
+      syncModuleTab("iparser");
+      const list = Array.isArray(r.modules.iparser) ? r.modules.iparser : [];
+      const m = list[idx];
+      if (!m) {
+        view.innerHTML = '<div class="placeholder">无 iparser 数据</div>';
+        return;
+      }
+      view.innerHTML = renderDecodedBlock(m.decoded,
+        '<div class="meta">' + escapeHtml(m.source || "iparser") +
+        " · " + (m.word_count || 0) + " words</div>");
+      setBar("iparser · " + (m.source || idx));
+      return;
+    }
+    if (parts[0] === "eparser" || parts[0] === "pedt") {
+      const mod = parts[0];
+      const idx = +parts[1];
+      state.selection = { type: mod, index: idx };
+      state.module = mod;
+      syncModuleTab(mod);
+      const list = Array.isArray(r.modules[mod]) ? r.modules[mod] : [];
+      const m = list[idx];
+      if (!m) {
+        view.innerHTML = '<div class="placeholder">无 ' + mod + " 数据</div>";
+        return;
+      }
+      view.innerHTML = renderDecodedBlock(m.decoded,
+        '<div class="meta">' + escapeHtml(m.source || mod) +
+        " · " + (m.word_count || 0) + " words</div>");
+      setBar(mod + " · " + (m.source || idx));
+      return;
+    }
+    if (parts[0] === "orphan") {
+      const idx = +parts[1];
+      state.selection = { type: "orphan", orphanIndex: idx };
+      const o = r.orphans[idx];
+      view.innerHTML = o.decoded
+        ? renderDecodedBlock(o.decoded, '<div class="meta">orphan · ' + escapeHtml(o.name) + "</div>")
+        : '<div class="meta">raw · ' + o.word_count + " words</div><pre style=\"font-family:var(--mono);font-size:0.8rem;white-space:pre-wrap;\">" +
+          escapeHtml((o.words_hex || []).join(" ")) + "</pre>";
+      setBar("orphan · " + o.name);
+    }
+  }
+
+  function syncModuleTab(mod) {
+    document.querySelectorAll("#moduleTabs button").forEach((b) => {
+      b.classList.toggle("active", b.getAttribute("data-mod") === mod);
+    });
+  }
+
+  function showModule(mod) {
+    state.module = mod;
+    syncModuleTab(mod);
+    const view = $("viewRoot");
+    if (!state.result) {
+      view.innerHTML = '<div class="placeholder">尚无解析结果</div>';
+      return;
+    }
+    if (mod === "eparser" || mod === "pedt" || mod === "iparser") {
+      const list = Array.isArray(state.result.modules[mod]) ? state.result.modules[mod] : [];
+      if (!list.length) {
+        view.innerHTML = '<div class="placeholder">无 ' + mod +
+          " 数据（粘贴模块选 " + mod + "，或日志含对应 dump 标记）</div>";
+        setBar(mod + " · 无数据");
+        return;
+      }
+      const leaf = $("navTree").querySelector('button.leaf[data-sel="' + mod + ':0"]');
+      selectNav(mod + ":0", leaf);
+      return;
+    }
+    if (mod === "mpl") {
+      const list = state.result.modules.mpl;
+      if (!list.length) {
+        view.innerHTML = '<div class="placeholder">无 mpl 数据（mpl 为独立模块，请粘贴 mpl dump 或日志中的 mpl 块）</div>';
+        return;
+      }
+      const leaf = $("navTree").querySelector('button.leaf[data-sel="mpl:0"]');
+      selectNav("mpl:0", leaf);
+      return;
+    }
+    // mau: 选第一个有数据的
+    const mau = state.result.modules.mau;
+    let found = null;
+    IPP.concat(EPP).some((i) => {
+      const dir = i <= 8 ? "ipp" : "epp";
+      const node = mau[dir]["mau" + i];
+      if (!node) return false;
+      const trace = (node.categories && node.categories.trace) || node.segments || {};
+      const segs = Object.keys(trace);
+      if (!segs.length) return false;
+      const seg = TRACE_ORDER.find((s) => trace[s]) || segs[0];
+      found = { i, seg };
+      return true;
+    });
+    if (found) {
+      const leaf = $("navTree").querySelector(
+        'button.leaf[data-sel="mau:' + found.i + ":trace:" + found.seg + '"]'
+      );
+      selectNav("mau:" + found.i + ":trace:" + found.seg, leaf);
+    } else if (state.result.orphans && state.result.orphans.length) {
+      const leaf = $("navTree").querySelector('button.leaf[data-sel="orphan:0"]');
+      selectNav("orphan:0", leaf);
+    } else {
+      view.innerHTML = '<div class="placeholder">日志中未识别到 mau 子段；解析后请在左侧选择 mau 实例</div>';
+    }
+  }
+
+  function emptyMauMaps() {
+    return { ipp: {}, epp: {}, expected_ipp: IPP.map((i)=>"mau"+i), expected_epp: EPP.map((i)=>"mau"+i) };
+  }
+
+  function emptySideModules() {
+    return { iparser: [], eparser: [], pedt: [] };
+  }
+
+  function doParse() {
+    const text = $("pasteArea").value;
+    setStatus("");
+    try {
+      const result = parseLog(text);
+      state.result = result;
+      renderNav();
+      const errs = result.errors || [];
+      if (errs.length) setStatus(errs.join("\n"), "warn");
+      else setStatus("解析完成 — 请在左侧选择模块 / mau 实例", "");
+      const ipN = Array.isArray(result.modules.iparser) ? result.modules.iparser.length : 0;
+      const epN = Array.isArray(result.modules.eparser) ? result.modules.eparser.length : 0;
+      const pdN = Array.isArray(result.modules.pedt) ? result.modules.pedt.length : 0;
+      const mplN = Array.isArray(result.modules.mpl) ? result.modules.mpl.length : 0;
+      let nextMod = state.module;
+      if (state.module === "iparser" && !ipN) nextMod = "mau";
+      else if (state.module === "eparser" && !epN) nextMod = "mau";
+      else if (state.module === "pedt" && !pdN) nextMod = "mau";
+      else if (state.module === "mpl" && !mplN) nextMod = "mau";
+      showModule(nextMod);
+      setBar("解析完成 · mau ipp=" + Object.keys(result.modules.mau.ipp).length +
+        " epp=" + Object.keys(result.modules.mau.epp).length +
+        " mpl=" + mplN +
+        " iparser=" + ipN +
+        " eparser=" + epN +
+        " pedt=" + pdN +
+        " orphan=" + (result.orphans || []).length);
+    } catch (e) {
+      setStatus(String(e.message || e), "err");
+      setBar("解析失败");
+    }
+  }
+
+  function exportCsv() {
+    const fields = state.lastFields || [];
+    if (!fields.length) { setStatus("当前无可导出字段", "warn"); return; }
+    const hideRsv = $("hideRsv").checked;
+    const filter = ($("fieldFilter").value || "").trim().toLowerCase();
+    const lines = ["idx,domain,raw_word,field,bits,width,hex,dec,binary,desc"];
+    let idx = 0;
+    fields.forEach((f) => {
+      if (!fieldVisible(f, filter, "")) return;
+      if (hideRsv && f.reserved) return;
+      const row = [
+        idx++,
+        f.domain_label || (f.domain == null ? "" : f.domain),
+        f.word_hex || "",
+        f.name,
+        f.bits,
+        f.width,
+        f.value_hex,
+        f.value_dec,
+        f.value_bin || "",
+        '"' + String(f.desc || "").replace(/"/g, '""') + '"',
+      ];
+      lines.push(row.join(","));
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "trace_fields.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function selectionKey(sel) {
+    if (!sel) return "";
+    if (sel.type === "mau") return "mau:" + sel.mau + ":" + (sel.kind || "trace") + ":" + sel.seg;
+    if (sel.type === "mpl") return "mpl:" + sel.mplIndex;
+    if (sel.type === "iparser") return "iparser:" + sel.iparserIndex;
+    if (sel.type === "eparser" || sel.type === "pedt") return sel.type + ":" + sel.index;
+    if (sel.type === "orphan") return "orphan:" + sel.orphanIndex;
+    return "";
+  }
+
+  $("viewRoot").addEventListener("click", (ev) => {
+    const tog = ev.target.closest(".hex-toggle");
+    if (!tog || !$("viewRoot").contains(tog)) return;
+    if (window.getSelection && String(window.getSelection()).length) return;
+    const td = tog.closest("td");
+    if (!td) return;
+    td.classList.toggle("bin-show");
+  });
+  $("btnParse").addEventListener("click", doParse);
+  $("btnClear").addEventListener("click", () => {
+    $("pasteArea").value = "";
+    $("fileInput").value = "";
+    state.result = null;
+    state.lastFields = [];
+    $("navTree").innerHTML = "";
+    $("viewRoot").innerHTML = '<div class="placeholder">粘贴 hex 或选择日志文件后点击「解析」</div>';
+    setStatus("");
+    setBar("已清空");
+    setViewStats(null, []);
+  });
+  $("btnExport").addEventListener("click", exportCsv);
+  $("fieldFilter").addEventListener("input", () => {
+    const key = selectionKey(state.selection);
+    if (!key) return;
+    const leaf = $("navTree").querySelector('button.leaf[data-sel="' + key + '"]');
+    selectNav(key, leaf);
+  });
+  $("hideRsv").addEventListener("change", () => $("fieldFilter").dispatchEvent(new Event("input")));
+
+  $("fileInput").addEventListener("change", (ev) => {
+    const f = ev.target.files && ev.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      $("pasteArea").value = String(reader.result || "");
+      setStatus("已载入 " + f.name + "，点击解析", "");
+    };
+    reader.onerror = () => setStatus("读文件失败", "err");
+    reader.readAsText(f);
+  });
+
+  document.querySelectorAll("#moduleTabs button").forEach((b) => {
+    b.addEventListener("click", () => showModule(b.getAttribute("data-mod")));
+  });
+
+  // 预嵌入结果
+  if (window.TRACE_RESULT) {
+    state.result = window.TRACE_RESULT;
+    renderNav();
+    showModule("mau");
+    setBar("已加载预解析结果");
+  }
+})();
+  </script>
+</body>
+</html>

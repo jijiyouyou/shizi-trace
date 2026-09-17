@@ -1,0 +1,37 @@
+echo $1
+echo $2
+local die $1
+local pipe $2
+local ok 0
+local pp 0
+case $pipe pp0 "local pp 0; echo pipe=pp0" pp1 "local pp 1; echo pipe=pp1" * "echo ERROR: arg2 must be pp0 or pp1; local ok 0"
+case $die xdie "local uniq 0x90; local ok 1" sdie0 "case $pipe pp0 'local uniq 0x00; local ok 1' pp1 'local uniq 0x01; local ok 1' * 'echo ERROR: arg2 must be pp0 or pp1; local ok 0'" sdie1 "case $pipe pp0 'local uniq 0x10; local ok 1' pp1 'local uniq 0x11; local ok 1' * 'echo ERROR: arg2 must be pp0 or pp1; local ok 0'" sdie2 "case $pipe pp0 'local uniq 0x20; local ok 1' pp1 'local uniq 0x21; local ok 1' * 'echo ERROR: arg2 must be pp0 or pp1; local ok 0'" sdie3 "case $pipe pp0 'local uniq 0x30; local ok 1' pp1 'local uniq 0x31; local ok 1' * 'echo ERROR: arg2 must be pp0 or pp1; local ok 0'" sdie4 "case $pipe pp0 'local uniq 0x40; local ok 1' pp1 'local uniq 0x41; local ok 1' * 'echo ERROR: arg2 must be pp0 or pp1; local ok 0'" sdie5 "case $pipe pp0 'local uniq 0x50; local ok 1' pp1 'local uniq 0x51; local ok 1' * 'echo ERROR: arg2 must be pp0 or pp1; local ok 0'" sdie6 "case $pipe pp0 'local uniq 0x60; local ok 1' pp1 'local uniq 0x61; local ok 1' * 'echo ERROR: arg2 must be pp0 or pp1; local ok 0'" sdie7 "case $pipe pp0 'local uniq 0x70; local ok 1' pp1 'local uniq 0x71; local ok 1' * 'echo ERROR: arg2 must be pp0 or pp1; local ok 0'" sdie8 "case $pipe pp0 'local uniq 0x80; local ok 1' pp1 'local uniq 0x81; local ok 1' * 'echo ERROR: arg2 must be pp0 or pp1; local ok 0'" * "echo ERROR: arg1 must be xdie or sdie0..sdie8; local ok 0"
+case $ok 0 "echo iparser_trace aborted"
+case $ok 1 "echo iparser_trace run iparser"
+echo "iparser_trace: die=$die pipe=$pipe pp=$pp uniq=$uniq ok=$ok"
+echo ---- iparser start ----
+local begin 0x00000000
+local block 0x03
+# Based on the extracted iparser register table, each register is 32-bit; length is one u32 word.
+# Keep the per-register length explicit so future wider registers can be upgraded without changing the call pattern.
+expr ${begin}+0x0428; local addr $?; local len 16; echo ---- dbg_hdr_info start ----; reg read ${block} ${uniq} ${addr} ${len}; echo ---- dbg_hdr_info end ----
+expr ${begin}+0x0468; local addr $?; local len 16; echo ---- dbg_psv_info start ----; reg read ${block} ${uniq} ${addr} ${len}; echo ---- dbg_psv_info end ----
+expr ${begin}+0x04a8; local addr $?; local len 1; echo ---- dbg_ppu_out_data0 start ----; reg read ${block} ${uniq} ${addr} ${len}; echo ---- dbg_ppu_out_data0 end ----
+expr ${begin}+0x04ac; local addr $?; local len 1; echo ---- dbg_ppu_out_data1 start ----; reg read ${block} ${uniq} ${addr} ${len}; echo ---- dbg_ppu_out_data1 end ----
+expr ${begin}+0x04b0; local addr $?; local len 1; echo ---- dbg_eof_out_data start ----; reg read ${block} ${uniq} ${addr} ${len}; echo ---- dbg_eof_out_data end ----
+expr ${begin}+0x04b4; local addr $?; local len 12; echo ---- dbg_mpl_req_info start ----; reg read ${block} ${uniq} ${addr} ${len}; echo ---- dbg_mpl_req_info end ----
+expr ${begin}+0x04e4; local addr $?; local len 9; echo ---- dbg_mpl_rsp_info start ----; reg read ${block} ${uniq} ${addr} ${len}; echo ---- dbg_mpl_rsp_info end ----
+expr ${begin}+0x0508; local addr $?; local len 1; echo ---- dbg_mpl_rsp_info1 start ----; reg read ${block} ${uniq} ${addr} ${len}; echo ---- dbg_mpl_rsp_info1 end ----
+expr ${begin}+0x050c; local addr $?; local len 6; echo ---- dbg_stg_tcam_match_rcd0 start ----; reg read ${block} ${uniq} ${addr} ${len}; echo ---- dbg_stg_tcam_match_rcd0 end ----
+expr ${begin}+0x0524; local addr $?; local len 6; echo ---- dbg_stg_tcam_match_rcd1 start ----; reg read ${block} ${uniq} ${addr} ${len}; echo ---- dbg_stg_tcam_match_rcd1 end ----
+expr ${begin}+0x053c; local addr $?; local len 2; echo ---- dbg_stg_tcam_match_rcd2 start ----; reg read ${block} ${uniq} ${addr} ${len}; echo ---- dbg_stg_tcam_match_rcd2 end ----
+expr ${begin}+0x0544; local addr $?; local len 10; echo ---- dbg_stg_info_rcd start ----; reg read ${block} ${uniq} ${addr} ${len}; echo ---- dbg_stg_info_rcd end ----
+expr ${begin}+0x056c; local addr $?; local len 6; echo ---- dbg_stg_done_rcd start ----; reg read ${block} ${uniq} ${addr} ${len}; echo ---- dbg_stg_done_rcd end ----
+expr ${begin}+0x0584; local addr $?; local len 1; echo ---- dbg_exm_info0 start ----; reg read ${block} ${uniq} ${addr} ${len}; echo ---- dbg_exm_info0 end ----
+expr ${begin}+0x0588; local addr $?; local len 1; echo ---- dbg_exm_info1 start ----; reg read ${block} ${uniq} ${addr} ${len}; echo ---- dbg_exm_info1 end ----
+expr ${begin}+0x058c; local addr $?; local len 1; echo ---- dbg_pstproc_check start ----; reg read ${block} ${uniq} ${addr} ${len}; echo ---- dbg_pstproc_check end ----
+expr ${begin}+0x0590; local addr $?; local len 1; echo ---- dbg_pstproc_dptr_rcd0 start ----; reg read ${block} ${uniq} ${addr} ${len}; echo ---- dbg_pstproc_dptr_rcd0 end ----
+expr ${begin}+0x0594; local addr $?; local len 1; echo ---- dbg_pstproc_dptr_rcd1 start ----; reg read ${block} ${uniq} ${addr} ${len}; echo ---- dbg_pstproc_dptr_rcd1 end ----
+expr ${begin}+0x0598; local addr $?; local len 1; echo ---- dbg_pstproc_dptr_rcd2 start ----; reg read ${block} ${uniq} ${addr} ${len}; echo ---- dbg_pstproc_dptr_rcd2 end ----
+expr ${begin}+0x059c; local addr $?; local len 16; echo ---- dbg_ctn_info start ----; reg read ${block} ${uniq} ${addr} ${len}; echo ---- dbg_ctn_info end ----
+echo ---- iparser end ----

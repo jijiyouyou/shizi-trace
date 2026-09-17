@@ -1,0 +1,5 @@
+# pedt 寄存器 dump 解析
+
+Pedt 与 eparser 共用 `eparser_pedt_fields.yaml` / `view/eparser/decode.py`。
+
+本目录 `decode.py` 仅为薄封装；日志标记见 `eparser_pe_trace.cli` 的 pedt 段。

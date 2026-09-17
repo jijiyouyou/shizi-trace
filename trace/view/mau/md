@@ -1,0 +1,194 @@
+# Trace View — 功能说明
+
+面向流水线 dump / 日志的可视化解析工具。对 **mpl / mau / iparser / eparser / pedt** 五大模块做字段级解码与展示。
+
+相关已有资产：
+
+| 路径 | 用途 |
+|------|------|
+| `../../mau_trace.yaml` | MAU（及 mpl payload）Domain/bit 格式定义 |
+| `../../md` / `../../mau_trace.cli` | 板端寄存器读取与地址映射 |
+| `../build_viewer.py` / `../trace_viewer.html` | 生成与对外呈现 |
+
+---
+
+## 1. 目标
+
+把「一串十六进制 / 日志里的寄存器 dump」解成带 **字段名、位宽、取值、说明** 的结构化视图，便于对照微码与排障。
+
+---
+
+## 2. 五大模块
+
+| 模块 | 职责（解析侧） | 格式来源（规划） |
+|------|----------------|------------------|
+| **mpl** | 解析 MPL 请求/相关总线；重点含 `mau_mpl_req_data`（`[371:0]` 业务 + `[372]` pptrace） | `mau_trace.yaml` → `payloads.mau_mpl_req_data`；图 `trace-格式/mpl.jpg` |
+| **mau** | 解析 MAU trace：cls / keygen / vme(lama+lamb) / lrr / egr 等 | `mau_trace.yaml` → `traces.*`；图 `trace-格式/*.jpg` |
+| **iparser** | 解析入向 parser 相关 dump（头提取、profile、校验结果等） | 待补格式定义（yaml/表） |
+| **eparser** | 解析出向 parser 相关 dump | 待补格式定义 |
+| **pedt** | 解析 pedt 相关 dump | 待补格式定义 |
+
+MVP 可先打通 **mpl + mau**（已有 yaml）；iparser / eparser / pedt 先占位 UI 与格式接口，格式表就绪后接入。
+
+---
+
+## 3. 数据输入（两种方式）
+
+### 3.1 日志文件解析
+
+- 选择 / 拖入日志文件（路径本地，不上传业务日志到外部）。
+- 按约定规则识别模块块（关键字、die/pp/mau 标签、`reg read` 输出块等）。
+- 自动切分各模块、各 mau 实例的 hex 序列，再按 yaml 解码。
+- 支持一次日志内多 die / 多 pp / 多 mau 片段列表，点选查看。
+
+### 3.2 窗口单独复制粘贴
+
+- 提供「粘贴区」：用户从板端窗口 / 终端 **单独复制** 一段 hex 或 dump 文本。
+- 手动指定（或启发式识别）：
+  - 模块：`mpl` | `mau` | `iparser` | `eparser` | `pedt`
+  - 若为 mau：方向 `ipp`/`epp`、实例 `mauN`、可选 `cls|keygen|vme|lrr|egr` 子段
+- 点击解析 → 与文件解析同一套解码引擎与展示组件。
+
+两种输入共用：**归一化为 u32 Domain 数组 → 按字段表解 bit → 展示**。
+
+---
+
+## 4. MAU 独立展示（ipp / epp）
+
+与 `mau_trace.cli` / `md` 约定一致：
+
+| 方向 | MAU 范围 | 展示 |
+|------|----------|------|
+| **ipp** | mau0 … mau8 | 每个 mau **独立页签 / 卡片 / 树节点**，互不混排 |
+| **epp** | mau9 … mau10 | 同上，独立展示分析 |
+
+要求：
+
+1. **按 mau 实例隔离**：mau0 与 mau1 的 cls/keygen/vme… 分开展示，不合成一张大表。  
+2. **子段可折叠**：同一 mau 下 cls / keygen / vme0…vme4 / lrr / egr 分块；vme 可再分 lama / lamb。  
+3. **字段级视图**：Domain 索引、字段名、`[hi:lo]`、width、解码值（hex/dec/bin 可选）、desc。  
+4. **mpl 联动（可选）**：keygen 中拼出的 `mau_mpl_req_data` 一键切到 mpl 视图，按 `payloads.mau_mpl_req_data` 解 `0..372`。  
+5. **对比（可选，后期）**：同日志内 mau_i vs mau_j 字段 diff。
+
+导航示意：
+
+```text
+日志 / 粘贴结果
+├── mpl
+├── mau
+│   ├── ipp
+│   │   ├── mau0 → cls | keygen | vme | lrr | egr
+│   │   ├── …
+│   │   └── mau8
+│   └── epp
+│       ├── mau9
+│       └── mau10
+├── iparser
+├── eparser
+└── pedt
+```
+
+---
+
+## 5. 功能清单（实现范围）
+
+### 必须（P0）
+
+- [ ] 加载 `mau_trace.yaml`（及后续各模块 yaml）作为解码表  
+- [ ] 日志文件解析入口 + 粘贴解析入口  
+- [ ] mau：ipp(mau0–8) / epp(mau9–10) 分栏或分 tab 独立展示  
+- [ ] mau 子段：cls / keygen / vme / lrr / egr 按 `word_count` 切分并解字段  
+- [ ] mpl：对 373bit 向量解 `lu_key_prof`…`sf_read_idx1` + `pptrace`  
+- [ ] 错误提示：长度不足 / Domain 数与 count 不符 / 非法 hex  
+
+### 应该（P1）
+
+- [ ] iparser / eparser / pedt 占位页 + 格式 yaml 接入点  
+- [ ] 字段搜索、按 name 过滤、保留位灰显  
+- [ ] 导出当前视图为文本 / CSV（仅本地）  
+
+### 可以（P2）
+
+- [ ] 多 mau 字段对比  
+- [ ] 与 `mau_trace.cli` 读回结果一键导入  
+- [ ] 深色主题 / 大段 hex 虚拟滚动  
+
+---
+
+## 6. 实现方式（Python + HTML）
+
+**对外形态：单个（或主入口）HTML 文件**，双击或用本地浏览器打开即可用；**不强制起 HTTP 服务**（可对标 `psv2head/headStruct/check/psv_viewer.html` 离线页思路）。
+
+技术分工：
+
+| 层 | 技术 | 职责 |
+|----|------|------|
+| 解码引擎 | **Python 3** | 读 yaml、解析日志/粘贴文本、u32 Domain 切分、按 `bits` 抽字段、拼 `payloads`（如 mpl 373bit） |
+| 展示与交互 | **HTML + CSS + 少量 JS** | 模块导航、ipp/epp·mau 页签、字段表、粘贴框、错误提示 |
+| 格式权威 | `mau_trace.yaml` 等 | 字段表；由 Python 加载或预嵌入 JSON |
+
+### 6.1 推荐架构（两档，可渐进）
+
+**A. 离线单页（首选交付）**
+
+```text
+python build_viewer.py
+  → 读取 mau_trace.yaml（及后续模块 yaml）
+  → 可选：预跑样例 / 仅嵌入格式表
+  → 生成 trace_viewer.html（内联 CSS/JS + LAYOUTS_JSON）
+用户：打开 HTML → 粘贴 hex / 选本地日志（FileReader）→ 浏览器内 JS 解码
+      或：Python 先 decode 成 JSON，再写入 HTML 一次性查看
+```
+
+- **纯粘贴 / 本地选文件**：可在 HTML 内用 JS 按嵌入的格式表解码（Python 负责 **build 时把 yaml→JSON 打进 HTML**）。  
+- **复杂日志切段**：可用 Python CLI 先解析成 `result.json`，再 `build_viewer.py -i result.json -o out.html` 生成带结果的页面。
+
+
+
+### 6.3 HTML 页面结构（对外呈现）
+
+单页建议布局：
+
+1. **顶栏**：模块切换（mpl / mau / iparser / eparser / pedt）  
+2. **输入区**：粘贴框 +「选择日志文件」+「解析」  
+3. **MAU 导航**：`ipp | epp` → `mau0..mau8` / `mau9..mau10` 独立入口  
+4. **主区**：当前 mau 的 cls / keygen / vme / lrr / egr 折叠块 + 字段表  
+5. **状态栏**：长度校验、缺格式提示  
+
+交付物名称建议：`trace_viewer.html`（放在 `view/` 或 `view/dist/`）。
+
+### 6.4 约束
+
+- 业务日志与解析结果默认 **仅本地**；生成 HTML 时不嵌入未脱敏的整库日志 unless 用户显式指定输入文件。  
+- 格式以 yaml 为准；改字段只改 yaml，再跑 `build_viewer.py` 刷新 HTML 内嵌表。  
+- iparser / eparser / pedt：先在 HTML 留 tab +「待定义」，引擎用同一 `decode` 接口。
+
+---
+
+### 6.5 修正点
+1. mpl不是keygen，mpl表示另外一个模块，与mau同级。keygen作为mau的一种trace信息
+2. 子段分为trace和统计两类
+3. vme中的paw展示，使用4个u32一行展示，列顺序与 yaml 一致（[31:0]→[63:32]→[95:64]→[127:96]），
+4. mau实例选取，是在解析完成后去选择，而不是在解析时去选择
+5. mau keygen中的mau_mpl_req_data字段，提供按照yaml中定义的mau_mpl_req_data格式进行展示
+
+
+## 10. 目录建议（落地时）
+
+```text
+tools/trace/
+  mau_trace.yaml       # MAU+mpl 格式
+  mau_trace.cli
+  md
+  view/
+    build_viewer.py    # → trace_viewer.html
+    viewer_template.html
+    trace_viewer.html  # 【对外呈现主文件】
+    mau/
+      md               # 本说明
+      decode.py        # 解码引擎
+      logparse.py      # 日志/粘贴切段
+      app.py           # 可选本地服务
+      trace-格式/      # 截图对照
+    mpl/ iparser/ eparser/ pedt/   # 其他模块占位
+```

@@ -1,0 +1,278 @@
+# mau_trace.cli / trace.cli
+
+STMS 风格 CLI 脚本：按入口方向与 PP 实例打印/校验参数。  
+语法参考：`for` / `case` / `local` / `$n` / `$?`（见板端 `help for`、`help case`）。
+
+---
+
+#用法
+
+## 统一入口（推荐）`trace.cli`
+
+合并 `mau_trace` + `iparser_trace` + `eparser_pe_trace`：
+
+```text
+trace.cli ipp <die> <pp0|pp1> epp <die> <pp0|pp1>
+```
+
+| 参数 | 位置 | 合法值 | 含义 |
+|------|------|--------|------|
+| 方向 | `$1` | `ipp` | 固定关键字 |
+| die | `$2` | `xdie` / `sdie0`…`sdie8` | **ipp** 侧 die |
+| PP | `$3` | `pp0` / `pp1` | **ipp** 侧管线 |
+| 方向 | `$4` | `epp` | 固定关键字 |
+| die | `$5` | `xdie` / `sdie0`…`sdie8` | **epp** 侧 die |
+| PP | `$6` | `pp0` / `pp1` | **epp** 侧管线 |
+
+行为：
+
+- **ipp 段**：mau0–8（含 statistics）+ `iparser` 全部寄存器
+- **epp 段**：mau9–10（含 statistics）+ `eparser` + `pedt`
+- 两侧 die/pp/`uniq` 独立，互不混用
+- 外层标记：`---- ipp start/end ----`、`---- epp start/end ----`
+
+示例：
+
+```text
+trace.cli ipp xdie pp0 epp sdie8 pp1
+```
+
+可由 `_gen_trace_cli.py` 从三份源脚本重新生成。
+
+## 单模块调试
+
+```text
+mau_trace.cli <xdie|sdie0..sdie8> <ipp|epp> <pp0|pp1>
+iparser_trace.cli <die> <pp0|pp1>
+eparser_pe_trace.cli <die> <pp0|pp1>
+```
+
+| 参数 | 位置 | 合法值 | 含义 |
+|------|------|--------|------|
+| die | `$1` | `xdie` / `sdie0`…`sdie8` | XDIE 或指定 SDIE 编号 |
+| 方向 | `$2` | `ipp` / `epp` | **ipp** 读 mau0–8；**epp** 读 mau9–10（仅 mau_trace） |
+| PP 实例 | `$3` | `pp0` / `pp1` | 处理管线；决定 sdie 的 `uniq_id` 低 4bit |
+
+示例：
+
+```text
+mau_trace.cli xdie ipp pp0
+mau_trace.cli sdie8 epp pp1
+mau_trace.cli sdie5 ipp pp1
+```
+
+非法参数走 `case` 的 `*` 分支并 `echo` 错误提示。
+
+---
+
+#计算与读取
+addr=begin_addr + offset    // 计算地址
+reg read $block_id $uniq_id $addr $count
+
+## mau_trace
+
+### cls_trace
+- `offset = 0x1308`
+- `count = 18`
+
+### keygen_trace
+- `offset = 0x1358`
+- `count = 29`
+
+### vme_trace
+#### vme0
+- `offset = 0x13cc`
+- `count = 52`
+
+#### vme1
+- `offset = 0x149c`
+- `count = 52`
+
+#### vme2
+- `offset = 0x156c`
+- `count = 52`
+
+#### vme3
+- `offset = 0x163c`
+- `count = 52`
+
+#### vme4
+- `offset = 0x170c`
+- `count = 52`
+
+
+### lrr_trace
+- `offset = 0x17dc`
+- `count = 26`
+
+### egr_trace
+- `offset = 0x1844`
+- `count = 54`
+
+
+## mau_statistics
+
+与 `mau_trace.yaml` → `statistics` 对齐；`addr = begin_addr + offset`，`reg read` 同上。  
+在每个 mau 的各类 **trace 读完后** 再读统计；输出用 `---- <name> start/end ----` 包裹。
+
+### trace_ctrl
+- `offset = 0x1300`，`count = 2`（`ppt_mode` + `mau_trace_crs`）
+
+### other_cfg
+- `offset = 0x12c0`，`count = 2`（`local_engine_val` + `endianness_adjust`）
+
+### cfg_inst
+- `offset = 0x0`，`count = 10`（`mau_ts` … `mau_cfg_inst0_8`）
+- `offset = 0x70`，`count = 2`（`keg_inst0_0` … `keg_inst0_1`）
+
+### fw_init
+- `offset = 0x6e4`，`count = 2`（`fw_mau_init_start` … `fw_mau_init_done`）
+
+### fw_ecc
+- `offset = 0xd14`，`count = 7`（`fw_insert_ecc_err` … `fw_int_ecc_info`）
+
+### fw_dbg
+- `offset = 0xd30`，`count = 25`（`fw_fifo_sts`×11 + `fw_dbg_cnt`×14）
+- `fw_dbg_cnt[0..13]` 每项 1×u32：入口报文、出口报文、查询MPL、MPL返回、查询LPM、LPM返回、mpl hit[0]、mpl hit[1]、lpm hit[1]、lpm hit[0]、bypass/cls-miss mau、bypass mpl、bypass lpm、cls hit
+- `offset = 0xd94`，`count = 1`（`fw_stistics_ctl`）
+- `offset = 0xd9c`，`count = 1`（`fw_dbg_credit`）
+
+### bp_stat
+- `offset = 0x191c`，`count = 2`（`fw_dbg_bp_his` + `fw_dbg_bp_cur`）
+- `offset = 0x1924`，`count = 6`（`fw_dbg_bp_max_cnt`×5 + `fw_dbg_bp_max_cnt_clr`）
+- `offset = 0x193c`，`count = 10`（`fw_dbg_bp_avg_prd`×5 + `fw_dbg_bp_avg_cnt`×5）
+- `offset = 0x1964`，`count = 2`（`fw_dbg_bp_set` + `fw_dbg_bp_ign`）
+
+### fifo_thres
+- `offset = 0x196c`，`count = 10`（`fw_fifo_full_threshold`×10）
+- `offset = 0x1994`，`count = 1`（`fw_credit_thres`）
+
+## mau block，uniq
+
+### xdie address mapping
+
+| MAU | block_id | uniq_id | begin_addr |
+|-----|----------|---------|------------|
+| mau0 | `0x03` | `0x90` | `0x10000` |
+| mau1 | `0x03` | `0x90` | `0x20000` |
+| mau2 | `0x03` | `0x90` | `0x30000` |
+| mau3 | `0x04` | `0x90` | `0x100000` |
+| mau4 | `0x04` | `0x90` | `0x110000` |
+| mau5 | `0x04` | `0x90` | `0x120000` |
+| mau6 | `0x04` | `0x90` | `0x130000` |
+| mau7 | `0x05` | `0x90` | `0x200000` |
+| mau8 | `0x05` | `0x90` | `0x210000` |
+| mau9 | `0x0e` | `0x90` | `0x310000` |
+| mau10 | `0x0e` | `0x90` | `0x320000` |
+
+
+### sdie address mapping
+
+#### sdie8 pp0（iepp0_wrap → iepp3_wrap）
+
+| MAU | wrap | block_id | uniq_id | begin_addr |
+|-----|------|----------|---------|------------|
+| mau0 | iepp0_wrap | `0x03` | `0x80` | `0x10000` |
+| mau1 | iepp0_wrap | `0x03` | `0x80` | `0x20000` |
+| mau2 | iepp0_wrap | `0x03` | `0x80` | `0x30000` |
+| mau3 | iepp1_wrap | `0x04` | `0x80` | `0x100000` |
+| mau4 | iepp1_wrap | `0x04` | `0x80` | `0x110000` |
+| mau5 | iepp1_wrap | `0x04` | `0x80` | `0x120000` |
+| mau6 | iepp1_wrap | `0x04` | `0x80` | `0x130000` |
+| mau7 | iepp2_wrap | `0x05` | `0x80` | `0x200000` |
+| mau8 | iepp2_wrap | `0x05` | `0x80` | `0x210000` |
+| mau9 | iepp3_wrap | `0x0e` | `0x80` | `0x310000` |
+| mau10 | iepp3_wrap | `0x0e` | `0x80` | `0x320000` |
+
+#### sdie8 pp1（iepp4_wrap → iepp7_wrap）
+
+| MAU | wrap | block_id | uniq_id | begin_addr |
+|-----|------|----------|---------|------------|
+| mau0 | iepp4_wrap | `0x03` | `0x81` | `0x10000` |
+| mau1 | iepp4_wrap | `0x03` | `0x81` | `0x20000` |
+| mau2 | iepp4_wrap | `0x03` | `0x81` | `0x30000` |
+| mau3 | iepp5_wrap | `0x04` | `0x81` | `0x100000` |
+| mau4 | iepp5_wrap | `0x04` | `0x81` | `0x110000` |
+| mau5 | iepp5_wrap | `0x04` | `0x81` | `0x120000` |
+| mau6 | iepp5_wrap | `0x04` | `0x81` | `0x130000` |
+| mau7 | iepp6_wrap | `0x05` | `0x81` | `0x200000` |
+| mau8 | iepp6_wrap | `0x05` | `0x81` | `0x210000` |
+| mau9 | iepp7_wrap | `0x0e` | `0x81` | `0x310000` |
+| mau10 | iepp7_wrap | `0x0e` | `0x81` | `0x320000` |
+
+#### sdie0-7 规则
+- mau: sdie0~7 同样存在 mau0~mau10
+- pp: sdie0~7 同样存在 pp0~pp1
+- block_id: 同 SDIE8 对应 mau
+- uniq_id: 将 SDIE8 的 uniq_id **高 4bit** 换成本 sdie 编号；低 4bit 保持（pp0→`0x0`，pp1→`0x1`）
+- begin_addr: 同 SDIE8 对应 mau
+
+#### sdie0-7 计算公式
+
+**输入：** `sdie` ∈ `{0..7}`，`pp` ∈ `{0,1}`，`mau` ∈ `{0..10}`  
+**基准：** 上表 **SDIE8** 在相同 `pp`、`mau` 下的一行，记为  
+`B8 = block_id_sdie8(mau)`，`U8 = uniq_id_sdie8(pp)`，`A8 = begin_addr_sdie8(mau)`  
+（与 pp 无关：同一 mau 在 pp0/pp1 的 `block_id`、`begin_addr` 相同；`U8` 仅随 pp：`pp0→0x80`，`pp1→0x81`。）
+
+```text
+block_id(sdie, pp, mau)  = B8
+                         = block_id_sdie8(mau)
+
+begin_addr(sdie, pp, mau) = A8
+                          = begin_addr_sdie8(mau)
+
+uniq_id(sdie, pp, mau)   = (sdie << 4) | (U8 & 0x0F)
+                         = (sdie << 4) | pp
+```
+
+说明：
+
+1. `U8 & 0x0F` 即 SDIE8 低 4bit：pp0 为 `0x0`，pp1 为 `0x1`，与入参 `pp` 相同。  
+2. 展开：`uniq_id = 0x10 * sdie + pp`（例如 sdie=3,pp=1 → `0x31`）。  
+3. 查表：先用 `(pp, mau)` 取 SDIE8 的 `B8/A8`（及校验 `U8`），再只改写 `uniq_id` 高 nibble 为 `sdie`。
+
+**伪代码：**
+
+```text
+function lookup(sdie, pp, mau):
+    row = SDIE8_table[pp][mau]          # 见上文 sdie8 pp0/pp1 表
+    return {
+        block_id:   row.block_id,       # 同 SDIE8
+        uniq_id:    (sdie << 4) | pp,   # 或 (sdie << 4) | (row.uniq_id & 0x0F)
+        begin_addr: row.begin_addr      # 同 SDIE8
+    }
+```
+
+**例：** `sdie=5, pp=1, mau=4` → `block_id=0x04`，`uniq_id=(5<<4)|1=0x51`，`begin_addr=0x110000`。
+
+
+
+
+# 脚本实现
+
+文件：`trace.cli`（统一入口；亦可单独用 `mau_trace.cli`）。STMS：`local` / `case` / `for` / `expr` / `$?` / `reg read`。
+
+## `trace.cli` 流程
+
+1. 校验 `$1`=`ipp`、`$4`=`epp`；两侧分别解析 die/pp  
+2. 按各侧 die/pp 设置 `uniq`（规则同下）  
+3. **ipp**：`mau_lo=0,mau_hi=8` → mau for；再 `iparser`（`ip_hi` 门控）  
+4. **epp**：`mau_lo=9,mau_hi=10` → mau for；再 `eparser`/`pedt`（`ep_hi`/`pd_hi` 门控）  
+5. `ok=0` 或参数非法时对应 `*_hi=-1` 跳过循环  
+
+## `mau_trace.cli` 流程（单模块）
+
+1. 校验 `$2`=`ipp|epp`、`$3`=`pp0|pp1`、`$1`=`xdie|sdie0..sdie8`  
+2. 按 die/pp 设置 `uniq`：  
+   - `xdie` → `0x90`  
+   - `sdie8` → `0x80` / `0x81`（随 pp）  
+   - `sdieN` → `(N<<4)|pp`（如 sdie5+pp1 → `0x51`）  
+3. 按 `$2` 设 mau 范围：`ipp` → `mau_lo=0,mau_hi=8`；`epp` → `mau_lo=9,mau_hi=10`  
+4. `ok=0` 或参数非法时 `mau_hi=-1` 跳过循环；否则 `for mau=${mau_lo},${mau_hi}`  
+5. 每轮 `case $mau` 设 `block`/`begin`（与地址表一致）  
+6. `addr = begin + offset`（`expr` + `local addr $?`），再 `reg read ${block} ${uniq} ${addr} ${count}`  
+7. 每种 trace / 统计块：`echo ---- <name> start ----` / `echo ---- <name> end ----`  
+8. **ipp 只读 mau0–8；epp 只读 mau9–10**  
+9. 每个 mau：先读全部 `mau_trace`，再读 `mau_statistics`（外层再包 `---- statistics start/end ----`）
+
+引号约定（与板端示例一致）：`for` 循环体用**单引号**；体内 `case` 分支用**双引号**；外层 die/pp 的 `case` 里嵌套时用单引号包 `local`。  

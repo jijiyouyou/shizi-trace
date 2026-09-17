@@ -1,0 +1,179 @@
+word_bits: 32
+bit_order: lsb0_in_word
+
+# iparser register dump layout
+# 每条寄存器均为 32-bit u32；dump 文本中按地址顺序排列，后续可按位域继续扩展
+traces:
+  iparser_trace:
+    title: Iparser register trace
+    word_count: 109
+    fields:
+      # dbg_hdr_info: 16 u32 words (0x0428 .. 0x0467)
+      - { domain: 0,  name: dbg_hdr_info_0,  bits: [31, 0], width: 32, byte_rev: u8x4, desc: "hdr info word 0" }
+      - { domain: 1,  name: dbg_hdr_info_1,  bits: [31, 0], width: 32, byte_rev: u8x4, desc: "hdr info word 1" }
+      - { domain: 2,  name: dbg_hdr_info_2,  bits: [31, 0], width: 32, byte_rev: u8x4, desc: "hdr info word 2" }
+      - { domain: 3,  name: dbg_hdr_info_3,  bits: [31, 0], width: 32, byte_rev: u8x4, desc: "hdr info word 3" }
+      - { domain: 4,  name: dbg_hdr_info_4,  bits: [31, 0], width: 32, byte_rev: u8x4, desc: "hdr info word 4" }
+      - { domain: 5,  name: dbg_hdr_info_5,  bits: [31, 0], width: 32, byte_rev: u8x4, desc: "hdr info word 5" }
+      - { domain: 6,  name: dbg_hdr_info_6,  bits: [31, 0], width: 32, byte_rev: u8x4, desc: "hdr info word 6" }
+      - { domain: 7,  name: dbg_hdr_info_7,  bits: [31, 0], width: 32, byte_rev: u8x4, desc: "hdr info word 7" }
+      - { domain: 8,  name: dbg_hdr_info_8,  bits: [31, 0], width: 32, byte_rev: u8x4, desc: "hdr info word 8" }
+      - { domain: 9,  name: dbg_hdr_info_9,  bits: [31, 0], width: 32, byte_rev: u8x4, desc: "hdr info word 9" }
+      - { domain: 10, name: dbg_hdr_info_10, bits: [31, 0], width: 32, byte_rev: u8x4, desc: "hdr info word 10" }
+      - { domain: 11, name: dbg_hdr_info_11, bits: [31, 0], width: 32, byte_rev: u8x4, desc: "hdr info word 11" }
+      - { domain: 12, name: dbg_hdr_info_12, bits: [31, 0], width: 32, byte_rev: u8x4, desc: "hdr info word 12" }
+      - { domain: 13, name: dbg_hdr_info_13, bits: [31, 0], width: 32, byte_rev: u8x4, desc: "hdr info word 13" }
+      - { domain: 14, name: dbg_hdr_info_14, bits: [31, 0], width: 32, byte_rev: u8x4, desc: "hdr info word 14" }
+      - { domain: 15, name: dbg_hdr_info_15, bits: [31, 0], width: 32, byte_rev: u8x4, desc: "hdr info word 15" }
+
+      # dbg_psv_info: 16 u32 words (0x0468 .. 0x04a7)
+      - { domain: 16, name: dbg_psv_info_0,  bits: [31, 0], width: 32, byte_rev: u8x4, desc: "psv info word 0" }
+      - { domain: 17, name: dbg_psv_info_1,  bits: [31, 0], width: 32, byte_rev: u8x4, desc: "psv info word 1" }
+      - { domain: 18, name: dbg_psv_info_2,  bits: [31, 0], width: 32, byte_rev: u8x4, desc: "psv info word 2" }
+      - { domain: 19, name: dbg_psv_info_3,  bits: [31, 0], width: 32, byte_rev: u8x4, desc: "psv info word 3" }
+      - { domain: 20, name: dbg_psv_info_4,  bits: [31, 0], width: 32, byte_rev: u8x4, desc: "psv info word 4" }
+      - { domain: 21, name: dbg_psv_info_5,  bits: [31, 0], width: 32, byte_rev: u8x4, desc: "psv info word 5" }
+      - { domain: 22, name: dbg_psv_info_6,  bits: [31, 0], width: 32, byte_rev: u8x4, desc: "psv info word 6" }
+      - { domain: 23, name: dbg_psv_info_7,  bits: [31, 0], width: 32, byte_rev: u8x4, desc: "psv info word 7" }
+      - { domain: 24, name: dbg_psv_info_8,  bits: [31, 0], width: 32, byte_rev: u8x4, desc: "psv info word 8" }
+      - { domain: 25, name: dbg_psv_info_9,  bits: [31, 0], width: 32, byte_rev: u8x4, desc: "psv info word 9" }
+      - { domain: 26, name: dbg_psv_info_10, bits: [31, 0], width: 32, byte_rev: u8x4, desc: "psv info word 10" }
+      - { domain: 27, name: dbg_psv_info_11, bits: [31, 0], width: 32, byte_rev: u8x4, desc: "psv info word 11" }
+      - { domain: 28, name: dbg_psv_info_12, bits: [31, 0], width: 32, byte_rev: u8x4, desc: "psv info word 12" }
+      - { domain: 29, name: dbg_psv_info_13, bits: [31, 0], width: 32, byte_rev: u8x4, desc: "psv info word 13" }
+      - { domain: 30, name: dbg_psv_info_14, bits: [31, 0], width: 32, byte_rev: u8x4, desc: "psv info word 14" }
+      - { domain: 31, name: dbg_psv_info_15, bits: [31, 0], width: 32, byte_rev: u8x4, desc: "psv info word 15" }
+
+      # dbg_ppu_out_data0 (0x4a8): [31:14] reserved, [13:5] pktid, [4:0] portid
+      - { domain: 32, name: dbg_ppu_out_data0_rsv, bits: [31, 14], width: 18, desc: "reserved" }
+      - { domain: 32, name: dbg_ppu_out_data0_pktid, bits: [13, 5], width: 9, desc: "输出的 pktid" }
+      - { domain: 32, name: dbg_ppu_out_data0_portid, bits: [4, 0], width: 5, desc: "输出的 portid" }
+
+      # dbg_ppu_out_data1 (0x4ac): hint / extra info, split as three zones
+      - { domain: 33, name: ZONE_0_HINT, bits: [7, 0], width: 8, desc: "低 8bit：ZONE_0_HINT" }
+      - { domain: 33, name: ZONE_1_HINT, bits: [19, 8], width: 12, desc: "中 12bit：ZONE_1_HINT" }
+      - { domain: 33, name: ZONE_2_HINT, bits: [31, 20], width: 12, desc: "高 12bit：ZONE_2_HINT" }
+
+      # dbg_eof_out_data (0x4b0): [31:28] rsv, [27:14] frm_size, [13:5] pktid, [4:0] portid
+      - { domain: 34, name: dbg_eof_out_data_rsv, bits: [31, 28], width: 4, desc: "reserved" }
+      - { domain: 34, name: dbg_eof_out_data_frm_size, bits: [27, 14], width: 14, desc: "输出的 frm_size" }
+      - { domain: 34, name: dbg_eof_out_data_pktid, bits: [13, 5], width: 9, desc: "输出的 pktid" }
+      - { domain: 34, name: dbg_eof_out_data_portid, bits: [4, 0], width: 5, desc: "输出的 portid" }
+
+      # dbg_mpl_req_info: 12 u32 words (0x04b4 .. 0x04e3)
+      - { domain: 35, name: dbg_mpl_req_info_0,  bits: [31, 0], width: 32, desc: "mpl req info word 0" }
+      - { domain: 36, name: dbg_mpl_req_info_1,  bits: [31, 0], width: 32, desc: "mpl req info word 1" }
+      - { domain: 37, name: dbg_mpl_req_info_2,  bits: [31, 0], width: 32, desc: "mpl req info word 2" }
+      - { domain: 38, name: dbg_mpl_req_info_3,  bits: [31, 0], width: 32, desc: "mpl req info word 3" }
+      - { domain: 39, name: dbg_mpl_req_info_4,  bits: [31, 0], width: 32, desc: "mpl req info word 4" }
+      - { domain: 40, name: dbg_mpl_req_info_5,  bits: [31, 0], width: 32, desc: "mpl req info word 5" }
+      - { domain: 41, name: dbg_mpl_req_info_6,  bits: [31, 0], width: 32, desc: "mpl req info word 6" }
+      - { domain: 42, name: dbg_mpl_req_info_7,  bits: [31, 0], width: 32, desc: "mpl req info word 7" }
+      - { domain: 43, name: dbg_mpl_req_info_8,  bits: [31, 0], width: 32, desc: "mpl req info word 8" }
+      - { domain: 44, name: dbg_mpl_req_info_9,  bits: [31, 0], width: 32, desc: "mpl req info word 9" }
+      - { domain: 45, name: dbg_mpl_req_info_10, bits: [31, 0], width: 32, desc: "mpl req info word 10" }
+      - { domain: 46, name: dbg_mpl_req_info_11, bits: [31, 0], width: 32, desc: "mpl req info word 11" }
+
+      # dbg_mpl_rsp_info: 9 u32 words (0x04e4 .. 0x0507)
+      - { domain: 47, name: dbg_mpl_rsp_info_0,  bits: [31, 0], width: 32, desc: "mpl rsp info word 0" }
+      - { domain: 48, name: dbg_mpl_rsp_info_1,  bits: [31, 0], width: 32, desc: "mpl rsp info word 1" }
+      - { domain: 49, name: dbg_mpl_rsp_info_2,  bits: [31, 0], width: 32, desc: "mpl rsp info word 2" }
+      - { domain: 50, name: dbg_mpl_rsp_info_3,  bits: [31, 0], width: 32, desc: "mpl rsp info word 3" }
+      - { domain: 51, name: dbg_mpl_rsp_info_4,  bits: [31, 0], width: 32, desc: "mpl rsp info word 4" }
+      - { domain: 52, name: dbg_mpl_rsp_info_5,  bits: [31, 0], width: 32, desc: "mpl rsp info word 5" }
+      - { domain: 53, name: dbg_mpl_rsp_info_6,  bits: [31, 0], width: 32, desc: "mpl rsp info word 6" }
+      - { domain: 54, name: dbg_mpl_rsp_info_7,  bits: [31, 0], width: 32, desc: "mpl rsp info word 7" }
+      - { domain: 55, name: dbg_mpl_rsp_info_8,  bits: [31, 0], width: 32, desc: "mpl rsp info word 8" }
+
+      - { domain: 56, name: dbg_mpl_rsp_info1, bits: [31, 0], width: 32, desc: "mpl 响应信息 1" }
+
+      # dbg_stg_tcam_match_rcd0: 6 u32 words (0x050c .. 0x0523)
+      - { domain: 57, name: dbg_stg_tcam_match_rcd0_0, bits: [31, 0], width: 32, desc: "stg tcam match record 0 word 0" }
+      - { domain: 58, name: dbg_stg_tcam_match_rcd0_1, bits: [31, 0], width: 32, desc: "stg tcam match record 0 word 1" }
+      - { domain: 59, name: dbg_stg_tcam_match_rcd0_2, bits: [31, 0], width: 32, desc: "stg tcam match record 0 word 2" }
+      - { domain: 60, name: dbg_stg_tcam_match_rcd0_3, bits: [31, 0], width: 32, desc: "stg tcam match record 0 word 3" }
+      - { domain: 61, name: dbg_stg_tcam_match_rcd0_4, bits: [31, 0], width: 32, desc: "stg tcam match record 0 word 4" }
+      - { domain: 62, name: dbg_stg_tcam_match_rcd0_5, bits: [31, 0], width: 32, desc: "stg tcam match record 0 word 5" }
+
+      # dbg_stg_tcam_match_rcd1: 6 u32 words (0x0524 .. 0x053b)
+      - { domain: 63, name: dbg_stg_tcam_match_rcd1_0, bits: [31, 0], width: 32, desc: "stg tcam match record 1 word 0" }
+      - { domain: 64, name: dbg_stg_tcam_match_rcd1_1, bits: [31, 0], width: 32, desc: "stg tcam match record 1 word 1" }
+      - { domain: 65, name: dbg_stg_tcam_match_rcd1_2, bits: [31, 0], width: 32, desc: "stg tcam match record 1 word 2" }
+      - { domain: 66, name: dbg_stg_tcam_match_rcd1_3, bits: [31, 0], width: 32, desc: "stg tcam match record 1 word 3" }
+      - { domain: 67, name: dbg_stg_tcam_match_rcd1_4, bits: [31, 0], width: 32, desc: "stg tcam match record 1 word 4" }
+      - { domain: 68, name: dbg_stg_tcam_match_rcd1_5, bits: [31, 0], width: 32, desc: "stg tcam match record 1 word 5" }
+
+      # dbg_stg_tcam_match_rcd2: 2 u32 words (0x053c .. 0x0543)
+      - { domain: 69, name: dbg_stg_tcam_match_rcd2_0, bits: [31, 0], width: 32, desc: "stg tcam match record 2 word 0" }
+      - { domain: 70, name: dbg_stg_tcam_match_rcd2_1, bits: [31, 0], width: 32, desc: "stg tcam match record 2 word 1" }
+
+      # dbg_stg_info_rcd: 10 u32 words (0x0544 .. 0x056b)
+      - { domain: 71, name: dbg_stg_info_rcd_0,  bits: [31, 0], width: 32, desc: "stg info record word 0" }
+      - { domain: 72, name: dbg_stg_info_rcd_1,  bits: [31, 0], width: 32, desc: "stg info record word 1" }
+      - { domain: 73, name: dbg_stg_info_rcd_2,  bits: [31, 0], width: 32, desc: "stg info record word 2" }
+      - { domain: 74, name: dbg_stg_info_rcd_3,  bits: [31, 0], width: 32, desc: "stg info record word 3" }
+      - { domain: 75, name: dbg_stg_info_rcd_4,  bits: [31, 0], width: 32, desc: "stg info record word 4" }
+      - { domain: 76, name: dbg_stg_info_rcd_5,  bits: [31, 0], width: 32, desc: "stg info record word 5" }
+      - { domain: 77, name: dbg_stg_info_rcd_6,  bits: [31, 0], width: 32, desc: "stg info record word 6" }
+      - { domain: 78, name: dbg_stg_info_rcd_7,  bits: [31, 0], width: 32, desc: "stg info record word 7" }
+      - { domain: 79, name: dbg_stg_info_rcd_8,  bits: [31, 0], width: 32, desc: "stg info record word 8" }
+      - { domain: 80, name: dbg_stg_info_rcd_9,  bits: [31, 0], width: 32, desc: "stg info record word 9" }
+
+      # dbg_stg_done_rcd: 6 u32 words (0x056c .. 0x0583)
+      - { domain: 81, name: dbg_stg_done_rcd_0, bits: [31, 0], width: 32, desc: "stg done record word 0" }
+      - { domain: 82, name: dbg_stg_done_rcd_1, bits: [31, 0], width: 32, desc: "stg done record word 1" }
+      - { domain: 83, name: dbg_stg_done_rcd_2, bits: [31, 0], width: 32, desc: "stg done record word 2" }
+      - { domain: 84, name: dbg_stg_done_rcd_3, bits: [31, 0], width: 32, desc: "stg done record word 3" }
+      - { domain: 85, name: dbg_stg_done_rcd_4, bits: [31, 0], width: 32, desc: "stg done record word 4" }
+      - { domain: 86, name: dbg_stg_done_rcd_5, bits: [31, 0], width: 32, desc: "stg done record word 5" }
+
+      # dbg_exm_info0 (0x0584): [31:16] match_key, [15:0] ral_key
+      - { domain: 87, name: dbg_exm_info0_match_key, bits: [31, 16], width: 16, desc: "match key" }
+      - { domain: 87, name: dbg_exm_info0_ral_key, bits: [15, 0], width: 16, desc: "ral key (来自 psv 或 vlan 更新后的 psv)" }
+
+      # dbg_exm_info1 (0x0588): [31:5] rsv, [4] hit, [3:0] hit_idx
+      - { domain: 88, name: dbg_exm_info1_rsv, bits: [31, 5], width: 27, desc: "reserved" }
+      - { domain: 88, name: dbg_exm_info1_hit, bits: [4, 4], width: 1, desc: "match hit 标志" }
+      - { domain: 88, name: dbg_exm_info1_hit_idx, bits: [3, 0], width: 4, desc: "match hit idx" }
+
+      # dbg_pstproc_check (0x058c): full-32 flag
+      - { domain: 89, name: dbg_pstproc_check_flag, bits: [31, 0], width: 32, desc: "pst proc check flag" }
+
+      # dbg_pstproc_dptr_rcd0 (0x0590): [31:30] rsv, [29:24] dptr4, [23:18] dptr3, [17:12] dptr2, [11:6] dptr1, [5:0] dptr0
+      - { domain: 90, name: dbg_pstproc_dptr_rcd0_rsv, bits: [31, 30], width: 2, desc: "reserved" }
+      - { domain: 90, name: dbg_pstproc_dptr_rcd0_dptr4, bits: [29, 24], width: 6, desc: "dptr4" }
+      - { domain: 90, name: dbg_pstproc_dptr_rcd0_dptr3, bits: [23, 18], width: 6, desc: "dptr3" }
+      - { domain: 90, name: dbg_pstproc_dptr_rcd0_dptr2, bits: [17, 12], width: 6, desc: "dptr2" }
+      - { domain: 90, name: dbg_pstproc_dptr_rcd0_dptr1, bits: [11, 6], width: 6, desc: "dptr1" }
+      - { domain: 90, name: dbg_pstproc_dptr_rcd0_dptr0, bits: [5, 0], width: 6, desc: "dptr0" }
+
+      # dbg_pstproc_dptr_rcd1 (0x0594): [31:30] rsv, [29:24] dptr9, [23:18] dptr8, [17:12] dptr7, [11:6] dptr6, [5:0] dptr5
+      - { domain: 91, name: dbg_pstproc_dptr_rcd1_rsv, bits: [31, 30], width: 2, desc: "reserved" }
+      - { domain: 91, name: dbg_pstproc_dptr_rcd1_dptr9, bits: [29, 24], width: 6, desc: "dptr9" }
+      - { domain: 91, name: dbg_pstproc_dptr_rcd1_dptr8, bits: [23, 18], width: 6, desc: "dptr8" }
+      - { domain: 91, name: dbg_pstproc_dptr_rcd1_dptr7, bits: [17, 12], width: 6, desc: "dptr7" }
+      - { domain: 91, name: dbg_pstproc_dptr_rcd1_dptr6, bits: [11, 6], width: 6, desc: "dptr6" }
+      - { domain: 91, name: dbg_pstproc_dptr_rcd1_dptr5, bits: [5, 0], width: 6, desc: "dptr5" }
+
+      # dbg_pstproc_dptr_rcd2 (0x0598): [31:12] rsv, [11:6] dptr11, [5:0] dptr10
+      - { domain: 92, name: dbg_pstproc_dptr_rcd2_rsv, bits: [31, 12], width: 20, desc: "reserved" }
+      - { domain: 92, name: dbg_pstproc_dptr_rcd2_dptr11, bits: [11, 6], width: 6, desc: "dptr11" }
+      - { domain: 92, name: dbg_pstproc_dptr_rcd2_dptr10, bits: [5, 0], width: 6, desc: "dptr10" }
+
+      # dbg_ctn_info: 16 u32 words (0x059c .. 0x05db)
+      - { domain: 93, name: dbg_ctn_info_0,  bits: [31, 0], width: 32, desc: "ctn info word 0" }
+      - { domain: 94, name: dbg_ctn_info_1,  bits: [31, 0], width: 32, desc: "ctn info word 1" }
+      - { domain: 95, name: dbg_ctn_info_2,  bits: [31, 0], width: 32, desc: "ctn info word 2" }
+      - { domain: 96, name: dbg_ctn_info_3,  bits: [31, 0], width: 32, desc: "ctn info word 3" }
+      - { domain: 97, name: dbg_ctn_info_4,  bits: [31, 0], width: 32, desc: "ctn info word 4" }
+      - { domain: 98, name: dbg_ctn_info_5,  bits: [31, 0], width: 32, desc: "ctn info word 5" }
+      - { domain: 99, name: dbg_ctn_info_6,  bits: [31, 0], width: 32, desc: "ctn info word 6" }
+      - { domain: 100, name: dbg_ctn_info_7, bits: [31, 0], width: 32, desc: "ctn info word 7" }
+      - { domain: 101, name: dbg_ctn_info_8, bits: [31, 0], width: 32, desc: "ctn info word 8" }
+      - { domain: 102, name: dbg_ctn_info_9, bits: [31, 0], width: 32, desc: "ctn info word 9" }
+      - { domain: 103, name: dbg_ctn_info_10, bits: [31, 0], width: 32, desc: "ctn info word 10" }
+      - { domain: 104, name: dbg_ctn_info_11, bits: [31, 0], width: 32, desc: "ctn info word 11" }
+      - { domain: 105, name: dbg_ctn_info_12, bits: [31, 0], width: 32, desc: "ctn info word 12" }
+      - { domain: 106, name: dbg_ctn_info_13, bits: [31, 0], width: 32, desc: "ctn info word 13" }
+      - { domain: 107, name: dbg_ctn_info_14, bits: [31, 0], width: 32, desc: "ctn info word 14" }
+      - { domain: 108, name: dbg_ctn_info_15, bits: [31, 0], width: 32, desc: "ctn info word 15" }

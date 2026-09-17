@@ -1,0 +1,9 @@
+# eparser / pedt 寄存器 dump 解析
+
+- 格式表：`tools/trace/eparser_pedt_fields.yaml`（`eparser_trace` 103 words，`pedt_trace` 214 words）
+- 解码实现：`view/eparser/decode.py`（pedt 复用同一模块）
+- CLI dump 标记：`eparser_pe_trace.cli`
+  - `====== eparser register dump start/end ======`
+  - `====== pedt register dump start (1/3) … end (3/3) ======`
+  - 子块：`---- eparser dbg_hdr_info start ----`（名称含空格）
+- Viewer：粘贴模块选 eparser / pedt，或 auto 日志切段

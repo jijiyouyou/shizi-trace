@@ -1,0 +1,2465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trace View · MAU / MPL</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #0f1722;
+      --header: #141b2d;
+      --side: #101826;
+      --border: #243044;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #7e3794;
+      --tab-idle: #1e3a5f;
+      --mod-bar: #163b58;
+      --th: #12263a;
+      --field: #7dd3fc;
+      --hex: #34d399;
+      --bits: #f59e0b;
+      --addr: #eab308;
+      --stat: #fb923c;
+      --warn: #e6a23c;
+      --err: #e25555;
+      --rsv: #64748b;
+      --mono: "Cascadia Code", "Consolas", "SF Mono", ui-monospace, monospace;
+      --sans: "Segoe UI", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      padding: 0.85rem 1.25rem 0.7rem;
+      background: var(--header);
+      border-bottom: 2px solid var(--accent);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.75rem 1.5rem;
+    }
+    header h1 { margin: 0; font-size: 1.15rem; font-weight: 600; color: #fff; }
+    header .sub { color: var(--muted); font-size: 0.85rem; }
+    .tabs { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+    .tabs button {
+      margin: 0;
+      background: var(--tab-idle);
+      border: 1px solid transparent;
+      color: #93c5fd;
+      padding: 0.4rem 0.85rem;
+      border-radius: 4px 4px 0 0;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .tabs button.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(280px, 340px) 1fr;
+      gap: 0;
+      flex: 1;
+      min-height: 0;
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    .side, .main {
+      padding: 1rem 1.25rem;
+      overflow: auto;
+    }
+    .side { border-right: 1px solid var(--border); background: var(--side); }
+    label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin: 0.6rem 0 0.3rem;
+    }
+    textarea, select, input[type="text"], input[type="search"] {
+      width: 100%;
+      background: #0b1220;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      padding: 0.5rem 0.65rem;
+    }
+    textarea { min-height: 140px; resize: vertical; line-height: 1.4; }
+    .row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: end; }
+    .row > * { flex: 1; min-width: 100px; }
+    button.primary, button.secondary {
+      margin-top: 0.75rem;
+      border: none;
+      color: #fff;
+      font-weight: 600;
+      padding: 0.55rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    button.primary { background: var(--accent); }
+    button.secondary { background: #334155; margin-left: 0.35rem; }
+    button:hover { filter: brightness(1.06); }
+    .status {
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      white-space: pre-wrap;
+    }
+    .status.err { color: var(--err); }
+    .status.warn { color: var(--warn); }
+    .nav-tree { margin-top: 1rem; font-size: 0.85rem; }
+    .nav-tree details { margin: 0.2rem 0; }
+    .nav-tree summary { cursor: pointer; color: var(--muted); }
+    .nav-tree button.leaf {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      padding: 0.25rem 0.4rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      margin: 0;
+    }
+    .nav-tree button.leaf:hover, .nav-tree button.leaf.active {
+      background: var(--mod-bar);
+      color: #fff;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+    .toolbar input[type="search"] { max-width: 260px; }
+    .view-stats {
+      margin-left: auto;
+      font-size: 0.8rem;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .view-stats .num { color: var(--stat); font-weight: 600; }
+    .view-stats .sep { color: var(--muted); margin: 0 0.2rem; }
+    input[type="file"] { color: #93c5fd; font-size: 0.8rem; }
+    input[type="file"]::file-selector-button {
+      background: #fff;
+      color: #111827;
+      border: none;
+      padding: 0.32rem 0.7rem;
+      margin-right: 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: var(--sans);
+    }
+    .seg > summary .reg-name { font-weight: 700; color: #fff; }
+    .seg {
+      border: 1px solid #1e3a4c;
+      border-radius: 2px;
+      margin-bottom: 0.55rem;
+      overflow: hidden;
+      background: var(--panel);
+    }
+    .seg > summary {
+      padding: 0.45rem 0.75rem;
+      background: var(--mod-bar);
+      cursor: pointer;
+      font-family: var(--mono);
+      font-size: 0.84rem;
+      color: #fff;
+      list-style: none;
+    }
+    .seg > summary::-webkit-details-marker { display: none; }
+    .seg > summary::before { content: "▾ "; color: #fff; }
+    .seg:not([open]) > summary::before { content: "▸ "; }
+    .seg > summary .c-addr { color: var(--addr); }
+    .seg > summary .c-hex { color: var(--hex); }
+    .c-meta { color: #93c5fd; font-weight: 400; }
+    .seg-body { padding: 0; overflow-x: auto; }
+    .seg-body > .seg { border-left: none; border-right: none; border-radius: 0; margin-bottom: 0; }
+    table.fields {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 0.78rem;
+      font-family: var(--mono);
+    }
+    table.fields col.c-idx { width: 3.2rem; }
+    table.fields col.c-dom { width: 5.2rem; }
+    table.fields col.c-raw { width: 7.6rem; }
+    table.fields col.c-field { width: 16rem; }
+    table.fields col.c-bits { width: 6.2rem; }
+    table.fields col.c-w { width: 4.2rem; }
+    table.fields col.c-hex { width: 8.2rem; }
+    table.fields col.c-dec { width: 6.2rem; }
+    table.fields th, table.fields td {
+      border-bottom: 1px solid #1b2a3a;
+      padding: 0.32rem 0.5rem;
+      text-align: left;
+      vertical-align: top;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    table.fields.compact-hex {
+      table-layout: auto;
+      width: auto;
+      margin: 0.25rem 0.6rem 0.5rem;
+    }
+    table.fields.compact-hex th,
+    table.fields.compact-hex td {
+      padding: 0.1rem 0.2rem;
+      font-size: 0.7rem;
+      line-height: 1.2;
+      border-bottom: none;
+      white-space: nowrap;
+      letter-spacing: 0;
+    }
+    table.fields.compact-hex td.c-hex {
+      color: var(--hex);
+      font-family: var(--mono);
+      padding-left: 0.1rem;
+      padding-right: 0.1rem;
+    }
+    table.fields.compact-hdr td.c-hex {
+      font-size: 0.9rem;
+      padding-left: 0.35rem;
+      padding-right: 0.35rem;
+    }
+    table.fields th {
+      color: #cbd5e1;
+      font-weight: 500;
+      font-family: var(--sans);
+      background: var(--th);
+      position: sticky;
+      top: 0;
+    }
+    table.fields tbody tr:nth-child(even) { background: #101a26; }
+    table.fields .c-idx { color: var(--muted); }
+    table.fields .c-dom, table.fields .c-field { color: var(--field); }
+    table.fields .c-bits { color: var(--bits); }
+    table.fields .c-hex, table.fields .c-raw { color: var(--hex); }
+    table.fields .c-dec, table.fields .c-w { color: var(--text); font-variant-numeric: tabular-nums; }
+    table.fields .c-desc {
+      color: var(--muted);
+      font-family: var(--sans);
+      white-space: normal;
+      overflow: visible;
+      text-overflow: unset;
+      word-break: break-word;
+    }
+    table.fields .hex-toggle {
+      cursor: pointer;
+      border-bottom: 1px dotted rgba(52, 211, 153, 0.45);
+    }
+    table.fields .hex-toggle:hover { filter: brightness(1.15); }
+    table.fields .bin-reveal {
+      display: none;
+      margin-top: 0.2rem;
+      color: #cbd5e1;
+      font-size: 0.72rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.35;
+    }
+    table.fields td.bin-show {
+      white-space: normal;
+      overflow: visible;
+    }
+    table.fields td.bin-show .bin-reveal { display: block; }
+    table.fields tr.rsv td { color: var(--rsv); }
+    table.fields tr.rsv .c-field,
+    table.fields tr.rsv .c-hex,
+    table.fields tr.rsv .c-raw,
+    table.fields tr.rsv .c-bits,
+    table.fields tr.rsv .c-dom { color: var(--rsv); }
+    table.fields tr.rsv .hex-toggle { border-bottom-color: rgba(100, 116, 139, 0.5); }
+    table.fields tr.highlight td { background: rgba(126, 55, 148, 0.18); }
+    table.fields tr.hidden { display: none; }
+    .paw-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 0.8rem; margin: 0; }
+    .paw-table th, .paw-table td {
+      border-bottom: 1px solid #1b2a3a;
+      padding: 0.35rem 0.5rem;
+      text-align: center;
+    }
+    .paw-table th { color: #cbd5e1; font-weight: 500; font-family: var(--sans); background: var(--th); }
+    .paw-table .paw-name { text-align: left; color: var(--field); white-space: nowrap; }
+    .paw-table td { color: var(--hex); }
+    .paw-hint { color: var(--muted); font-size: 0.75rem; margin: 0.35rem 0.5rem; }
+    table.ctn-pair { table-layout: auto; }
+    table.ctn-pair th, table.ctn-pair td { white-space: nowrap; }
+    table.ctn-pair .c-idx { color: var(--muted); }
+    table.ctn-pair .pair-name { color: var(--field); font-weight: 600; }
+    .hex-blob {
+      margin: 0;
+      border-top: 1px solid #1b2a3a;
+      background: #0b1220;
+      overflow: hidden;
+    }
+    .hex-blob-title {
+      padding: 0.4rem 0.65rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      border-bottom: 1px solid #1b2a3a;
+      font-family: var(--sans);
+      background: var(--th);
+    }
+    .hex-blob-body {
+      margin: 0;
+      padding: 0.65rem 0.75rem;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      line-height: 1.55;
+      color: var(--hex);
+      white-space: pre-wrap;
+      word-break: break-all;
+      user-select: text;
+    }
+    .meta { color: var(--muted); font-size: 0.8rem; margin: 0.4rem 0.65rem 0.5rem; }
+    .meta .c-hex { color: var(--hex); }
+    .meta .c-addr { color: var(--addr); }
+    .stat-line { color: var(--text); font-size: 0.8rem; }
+    .stat-line .lbl { color: var(--addr); }
+    .stat-line .num { color: var(--stat); }
+    .placeholder {
+      padding: 2rem;
+      color: var(--muted);
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      text-align: center;
+    }
+    .linkish {
+      background: none;
+      border: none;
+      color: var(--accent);
+      cursor: pointer;
+      font-size: inherit;
+      padding: 0;
+      margin: 0;
+      text-decoration: underline;
+    }
+    footer.status-bar {
+      border-top: 1px solid var(--border);
+      padding: 0.4rem 1.25rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      background: var(--header);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Trace View</h1>
+      <div class="sub">流水线 dump 字段级解码 · 格式来自 mau_trace.yaml</div>
+    </div>
+    <nav class="tabs" id="moduleTabs">
+      <button type="button" data-mod="mau" class="active">mau</button>
+      <button type="button" data-mod="mpl">mpl</button>
+      <button type="button" data-mod="iparser">iparser</button>
+      <button type="button" data-mod="eparser">eparser</button>
+      <button type="button" data-mod="pedt">pedt</button>
+    </nav>
+  </header>
+
+  <div class="layout">
+    <aside class="side">
+      <label>粘贴 hex / dump</label>
+      <textarea id="pasteArea" placeholder="粘贴 Domain 十六进制，或整段带 ---- xxx start ---- 的日志…"></textarea>
+
+      <label>选择日志文件（仅本地 FileReader）</label>
+      <input type="file" id="fileInput" accept=".log,.txt,.dump,.out,*/*" />
+
+      <div>
+        <button type="button" class="primary" id="btnParse">解析</button>
+        <button type="button" class="secondary" id="btnClear">清空</button>
+        <button type="button" class="secondary" id="btnExport">导出 CSV</button>
+      </div>
+      <div class="status" id="parseStatus"></div>
+
+      <div class="nav-tree" id="navTree"></div>
+    </aside>
+
+    <section class="main">
+      <div class="toolbar">
+        <input type="search" id="fieldFilter" placeholder="Search register or field..." />
+        <label style="display:inline-flex;align-items:center;gap:0.35rem;margin:0;color:var(--muted);font-size:0.8rem;">
+          <input type="checkbox" id="hideRsv" /> 隐藏保留位
+        </label>
+        <div class="view-stats" id="viewStats"></div>
+      </div>
+      <div id="viewRoot">
+        <div class="placeholder">粘贴 hex 或选择日志文件后点击「解析」</div>
+      </div>
+    </section>
+  </div>
+
+  <footer class="status-bar" id="statusBar">就绪 · 格式表已嵌入</footer>
+
+  <script>
+  window.TRACE_LAYOUTS = {"word_bits":32,"bit_order":"lsb0_in_word","payloads":{"mau_mpl_req_data":{"width":373,"bit_order":"lsb0","note":"keygen_trace name=mau_mpl_req_data 拼出的向量；0..371 同 mpl 接口，372=pptrace","fields":[{"name":"lu_key_prof","bits":[3,0],"width":4,"desc":"查询 prof"},{"name":"lu0_enable","bits":[4,4],"width":1,"desc":"图中 lu0_enbale"},{"name":"lu1_enable","bits":[5,5],"width":1,"desc":"lu1_enable"},{"name":"lu_key","bits":[325,6],"width":320,"words_rev":true,"desc":"查找 key（10×u32 展示高字在前）"},{"name":"sf_read0","bits":[326,326],"width":1,"desc":"读使能0","highlight":"enable"},{"name":"sf_read_prof0","bits":[328,327],"width":2,"desc":"sf_read_prof0"},{"name":"sf_read1","bits":[329,329],"width":1,"desc":"读使能1","highlight":"enable"},{"name":"sf_read_prof1","bits":[331,330],"width":2,"desc":"sf_read_prof1"},{"name":"sf_read_idx0","bits":[351,332],"width":20,"desc":"读索引0"},{"name":"sf_read_idx1","bits":[371,352],"width":20,"desc":"读索引1（业务最高位 [371]）"},{"name":"pptrace","bits":[372,372],"width":1,"desc":"ppt / pptrace；keygen Domain 最高 1bit"}]},"mau_mpl_rsp_data":{"width":298,"bit_order":"lsb0","note":"对lrr_trace中的Lur进行解析","fields":[{"name":"res_vld","bits":[3,0],"width":4,"desc":"查询有效位"},{"name":"hit","bits":[5,4],"width":2,"desc":"2查hit位"},{"name":"hit_idx","bits":[37,6],"width":32,"desc":"hit idx"},{"name":"val","bits":[293,38],"width":256,"desc":"mpl rsp"},{"name":"hw_err","bits":[297,294],"width":4,"desc":"hw err"}]},"lpm_mpl_req_data":{"width":272,"bit_order":"lsb0","assemble_msb":true,"note":"272bit = 16bit hdr + 8×u32；hdr=lu_sip_vld/lu_dip_vld/is_ipv6/vrf  从keygen_trace中的domain12开始","fields":[{"name":"lu_sip_vld","bits":[0,0],"width":1,"desc":"sip lpm 查询"},{"name":"lu_dip_vld","bits":[1,1],"width":1,"desc":"dip lpm 查询"},{"name":"is_ipv6","bits":[2,2],"width":1,"desc":"是否为ipv6"},{"name":"vrf","bits":[15,3],"width":13,"desc":"vrf"},{"name":"sip","bits":[143,16],"width":128,"words_rev":true,"desc":"sip（4×u32 高字在前）"},{"name":"dip","bits":[271,144],"width":128,"words_rev":true,"desc":"dip（4×u32 高字在前）"}]},"lpm_mpl_rsp_data":{"width":76,"bit_order":"lsb0","note":"对egr_trace中的lpm_result进行解析","fields":[{"name":"sip_dft_tote_set","bits":[75,75],"width":1,"desc":"sip dft"},{"name":"dip_dft_rote_set","bits":[74,74],"width":1,"desc":"dip dft"},{"name":"sip_rsp_vld","bits":[73,73],"width":1,"desc":"sip rsp vld"},{"name":"dip_rsp_vld","bits":[72,72],"width":1,"desc":"dip rsp vld"},{"name":"sip_hit","bits":[71,70],"width":2,"desc":"b00:miss. b01:hit. b1x:hardware error"},{"name":"dip_hit","bits":[69,68],"width":2,"desc":"b00:miss. b01:hit. b1x:hardware error"},{"name":"sip_hit_idx","bits":[67,52],"width":16,"desc":"lookup hit index, meaningful when response is valid and hit"},{"name":"dip_hit_idx","bits":[51,36],"width":16,"desc":"lookup hit index, meaningful when response is valid and hit"},{"name":"sip_val_idx","bits":[35,18],"width":18,"desc":"sip value index"},{"name":"dip_val_idx","bits":[17,0],"width":18,"desc":"dip value index"}]}},"traces":{"cls_trace":{"title":"Cls trace","word_count":18,"fields":[{"domain":0,"name":"bypass_mau","bits":[0,0],"width":1,"desc":"cls 未命中或 MAU 不使能"},{"domain":0,"name":"hit_idx","bits":[4,1],"width":4,"desc":"流分类 clsd 命中索引"},{"domain":0,"name":"cls_key","bits":[20,5],"width":16,"desc":"流分类 key"},{"domain":0,"name":"rd_keg_prof1","bits":[22,21],"width":2,"desc":"Direct read1 提取 prof"},{"domain":0,"name":"rd_keg_prof0","bits":[24,23],"width":2,"desc":"Direct read0 提取 prof"},{"domain":0,"name":"lkp_keg_prof","bits":[28,25],"width":4,"desc":"Lu key gen prof"},{"name":"vme_keg_prof","width":4,"bits":[3,0],"desc":"Vme keygen prof[3:0]","pieces":[{"domain":0,"bits":[31,29],"into":[2,0]},{"domain":1,"bits":[0,0],"into":[3,3]}]},{"domain":1,"name":"glb_ctl_prof","bits":[4,1],"width":4,"desc":"Global ctrl prof"},{"domain":1,"name":"igr_port","bits":[9,5],"width":5,"desc":"入口 port（图中 igr_porf）"},{"domain":1,"name":"rsv","bits":[31,10],"width":22,"desc":"保留"},{"domain":2,"name":"igr_psv","bits":[31,0],"width":32,"desc":"igr_psv[31:0]"},{"domain":3,"name":"igr_psv","bits":[31,0],"width":32,"desc":"igr_psv[63:32]"},{"domain":4,"name":"igr_psv","bits":[31,0],"width":32,"desc":"igr_psv[95:64]"},{"domain":5,"name":"igr_psv","bits":[31,0],"width":32,"desc":"igr_psv[127:96]"},{"domain":6,"name":"igr_psv","bits":[31,0],"width":32,"desc":"igr_psv[159:128]"},{"domain":7,"name":"igr_psv","bits":[31,0],"width":32,"desc":"igr_psv[191:160]"},{"domain":8,"name":"igr_psv","bits":[31,0],"width":32,"desc":"igr_psv[223:192]"},{"domain":9,"name":"igr_psv","bits":[31,0],"width":32,"desc":"igr_psv[255:224]"},{"domain":10,"name":"igr_psv","bits":[31,0],"width":32,"desc":"igr_psv[287:256]"},{"domain":11,"name":"igr_psv","bits":[31,0],"width":32,"desc":"igr_psv[319:288]"},{"domain":12,"name":"igr_psv","bits":[31,0],"width":32,"desc":"igr_psv[351:320]"},{"domain":13,"name":"igr_psv","bits":[31,0],"width":32,"desc":"igr_psv[383:352]"},{"domain":14,"name":"igr_psv","bits":[31,0],"width":32,"desc":"igr_psv[415:384]"},{"domain":15,"name":"igr_psv","bits":[31,0],"width":32,"desc":"igr_psv[447:416]"},{"domain":16,"name":"igr_psv","bits":[31,0],"width":32,"desc":"igr_psv[479:448]"},{"domain":17,"name":"igr_psv","bits":[31,0],"width":32,"desc":"igr_psv[511:480]"}]},"keygen_trace":{"title":"keygen trace","word_count":29,"fields":[{"domain":0,"name":"mpl_req","bits":[0,0],"width":1,"desc":"mau 查询 mpl 有效指示"},{"domain":0,"name":"lpm_req","bits":[1,1],"width":1,"desc":"mau 查询 lpm 有效指示"},{"domain":0,"name":"mau_mpl_req_data","bits":[31,2],"width":30,"desc":"拼入 payloads.mau_mpl_req_data[29:0]"},{"domain":1,"name":"mau_mpl_req_data","bits":[31,0],"width":32,"desc":"拼入 [61:30]"},{"domain":2,"name":"mau_mpl_req_data","bits":[31,0],"width":32,"desc":"拼入 [93:62]"},{"domain":3,"name":"mau_mpl_req_data","bits":[31,0],"width":32,"desc":"拼入 [125:94]"},{"domain":4,"name":"mau_mpl_req_data","bits":[31,0],"width":32,"desc":"拼入 [157:126]"},{"domain":5,"name":"mau_mpl_req_data","bits":[31,0],"width":32,"desc":"拼入 [189:158]"},{"domain":6,"name":"mau_mpl_req_data","bits":[31,0],"width":32,"desc":"拼入 [221:190]"},{"domain":7,"name":"mau_mpl_req_data","bits":[31,0],"width":32,"desc":"拼入 [253:222]"},{"domain":8,"name":"mau_mpl_req_data","bits":[31,0],"width":32,"desc":"拼入 [285:254]"},{"domain":9,"name":"mau_mpl_req_data","bits":[31,0],"width":32,"desc":"拼入 [317:286]"},{"domain":10,"name":"mau_mpl_req_data","bits":[31,0],"width":32,"desc":"拼入 [349:318]"},{"domain":11,"name":"rsv","bits":[31,24],"width":8,"desc":"保留"},{"domain":11,"name":"pass_through_psv","bits":[23,23],"width":1,"desc":"透传 psv 指示"},{"domain":11,"name":"mau_mpl_req_data","bits":[22,0],"width":23,"desc":"拼入 [372:350]；其中 [372]=pptrace"},{"domain":12,"name":"mau_lpm_req_data","bits":[31,0],"width":32,"desc":"lpm u32[0] → payloads.lpm_mpl_req_data（16bit+8×u32）"},{"domain":13,"name":"mau_lpm_req_data","bits":[31,0],"width":32,"desc":"lpm u32[1]"},{"domain":14,"name":"mau_lpm_req_data","bits":[31,0],"width":32,"desc":"lpm u32[2]"},{"domain":15,"name":"mau_lpm_req_data","bits":[31,0],"width":32,"desc":"lpm u32[3]"},{"domain":16,"name":"mau_lpm_req_data","bits":[31,0],"width":32,"desc":"lpm u32[4]"},{"domain":17,"name":"mau_lpm_req_data","bits":[31,0],"width":32,"desc":"lpm u32[5]"},{"domain":18,"name":"mau_lpm_req_data","bits":[31,0],"width":32,"desc":"lpm u32[6]"},{"domain":19,"name":"mau_lpm_req_data","bits":[31,0],"width":32,"desc":"lpm u32[7]"},{"domain":20,"name":"mau_lpm_req_data","bits":[15,0],"width":16,"desc":"lpm 低 16bit（与上 8×u32 共 272bit）"},{"domain":20,"name":"pass_through_psv","bits":[18,18],"width":1,"desc":"透传 PSV 指示"},{"domain":20,"name":"rsv","bits":[31,19],"width":13,"desc":"保留"},{"domain":21,"name":"paw","bits":[31,0],"width":32,"desc":"paw[31:0]"},{"domain":22,"name":"paw","bits":[31,0],"width":32,"desc":"paw[63:32]"},{"domain":23,"name":"paw","bits":[31,0],"width":32,"desc":"paw[95:64]"},{"domain":24,"name":"paw","bits":[31,0],"width":32,"desc":"paw[127:96]"},{"domain":25,"name":"paw","bits":[31,0],"width":32,"desc":"paw[159:128]"},{"domain":26,"name":"paw","bits":[31,0],"width":32,"desc":"paw[191:160]"},{"domain":27,"name":"paw","bits":[31,0],"width":32,"desc":"paw[223:192]"},{"domain":28,"name":"paw","bits":[31,0],"width":32,"desc":"paw[255:224]"}]},"vme_lama_trace":{"title":"VME0 lama trace","word_count":26,"domain_base":0,"fields":[{"domain":0,"name":"aval","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"i_aval（显示按 4×u8 反序）"},{"domain":1,"name":"bval","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"i_bval（显示按 4×u8 反序）"},{"domain":2,"name":"mux_sel","bits":[7,0],"width":8,"desc":"{mux_sel[0..3]}"},{"domain":2,"name":"lam_idx","bits":[10,8],"width":3,"desc":"Lam_idx"},{"domain":2,"name":"rsv","bits":[11,11],"width":1,"desc":"Rsv"},{"domain":2,"name":"luta_idx","bits":[13,12],"width":2,"desc":"Luta_idx"},{"domain":2,"name":"Lut_rlt","bits":[14,14],"width":1,"desc":"1bit Lut 查找结果"},{"domain":2,"name":"rsv","bits":[15,15],"width":1,"desc":"Rsv"},{"domain":2,"name":"alu_opcode3","bits":[23,16],"width":8,"desc":"alu_opcode3 mix时,等于opcode2"},{"domain":2,"name":"alu_opcode2","bits":[31,24],"width":8,"desc":"alu_opcode2"},{"domain":3,"name":"alu_opcode1","bits":[7,0],"width":8,"desc":"alu_opcode1"},{"domain":3,"name":"alu_opcode0","bits":[15,8],"width":8,"desc":"alu_opcode0"},{"domain":3,"name":"yval_vld","bits":[19,16],"width":4,"desc":"{vld[0..3]} 忽略, RTL未设置"},{"domain":3,"name":"yval3","bits":[27,20],"width":8,"desc":"yval[3]；有效性看 yval_btot[3]，为0无效"},{"domain":3,"name":"yval2_lo","bits":[31,28],"width":4,"desc":"yval[2][3:0]；有效性看 yval_btot[2]，为0无效"},{"domain":4,"name":"yval2_hi","bits":[3,0],"width":4,"desc":"yval[2][7:4]；有效性看 yval_btot[2]，为0无效"},{"domain":4,"name":"yval1","bits":[11,4],"width":8,"desc":"yval[1]；有效性看 yval_btot[1]，为0无效"},{"domain":4,"name":"yval0","bits":[19,12],"width":8,"desc":"yval[0]；有效性看 yval_btot[0]，为0无效"},{"domain":4,"name":"yval_btot3","bits":[27,20],"width":8,"desc":"yval_btot[3] 为0表示yval无效"},{"domain":4,"name":"yval_btot2","bits":[31,28],"width":4,"desc":"yval_btot[2] 为0表示yval无效"},{"domain":5,"name":"yval_btot1","bits":[3,0],"width":4,"desc":"yval_btot[1] 为0表示yval无效"},{"domain":5,"name":"yval_btot0","bits":[7,4],"width":4,"desc":"yval_btot[0] 为0表示yval无效"},{"domain":5,"name":"rsv","bits":[31,8],"width":24,"desc":"Rsv"},{"domain":6,"name":"Paw0","bits":[31,0],"width":32,"desc":"Paw0[31:0]"},{"domain":7,"name":"Paw0","bits":[31,0],"width":32,"desc":"Paw0[63:32]"},{"domain":8,"name":"Paw0","bits":[31,0],"width":32,"desc":"Paw0[95:64]"},{"domain":9,"name":"Paw0","bits":[31,0],"width":32,"desc":"Paw0[127:96]"},{"domain":10,"name":"Paw1","bits":[31,0],"width":32,"desc":"Paw1[31:0]"},{"domain":11,"name":"Paw1","bits":[31,0],"width":32,"desc":"Paw1[63:32]"},{"domain":12,"name":"Paw1","bits":[31,0],"width":32,"desc":"Paw1[95:64]"},{"domain":13,"name":"Paw1","bits":[31,0],"width":32,"desc":"Paw1[127:96]"},{"domain":14,"name":"Paw2","bits":[31,0],"width":32,"desc":"Paw2[31:0]"},{"domain":15,"name":"Paw2","bits":[31,0],"width":32,"desc":"Paw2[63:32]"},{"domain":16,"name":"Paw2","bits":[31,0],"width":32,"desc":"Paw2[95:64]"},{"domain":17,"name":"Paw2","bits":[31,0],"width":32,"desc":"Paw2[127:96]"},{"domain":18,"name":"Paw3","bits":[31,0],"width":32,"desc":"Paw3[31:0]"},{"domain":19,"name":"Paw3","bits":[31,0],"width":32,"desc":"Paw3[63:32]"},{"domain":20,"name":"Paw3","bits":[31,0],"width":32,"desc":"Paw3[95:64]"},{"domain":21,"name":"Paw3","bits":[31,0],"width":32,"desc":"Paw3[127:96]"},{"domain":22,"name":"Paw4","bits":[31,0],"width":32,"desc":"Paw4[31:0]"},{"domain":23,"name":"Paw4","bits":[31,0],"width":32,"desc":"Paw4[63:32]"},{"domain":24,"name":"Paw4","bits":[31,0],"width":32,"desc":"Paw4[95:64]"},{"domain":25,"name":"Paw4","bits":[31,0],"width":32,"desc":"Paw4[127:96]"}]},"vme_lamb_trace":{"title":"VME0 lamb trace","word_count":26,"domain_base":26,"note":"VME1~VME4 数据结构同 lama+lamb；绝对 Domain = 26 + lama 相对序号","fields":[{"domain":26,"name":"aval","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"i_aval（显示按 4×u8 反序）"},{"domain":27,"name":"bval","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"i_bval（显示按 4×u8 反序）"},{"domain":28,"name":"mux_sel","bits":[7,0],"width":8,"desc":"{mux_sel[0..3]}"},{"domain":28,"name":"lam_idx","bits":[10,8],"width":3,"desc":"Lam_idx"},{"domain":28,"name":"rsv","bits":[11,11],"width":1,"desc":"Rsv"},{"domain":28,"name":"luta_idx","bits":[13,12],"width":2,"desc":"Luta_idx"},{"domain":28,"name":"Lut_rlt","bits":[14,14],"width":1,"desc":"1bit Lut 查找结果"},{"domain":28,"name":"rsv","bits":[15,15],"width":1,"desc":"Rsv"},{"domain":28,"name":"alu_opcode3","bits":[23,16],"width":8,"desc":"alu_opcode3 mix时,等于opcode2"},{"domain":28,"name":"alu_opcode2","bits":[31,24],"width":8,"desc":"alu_opcode2"},{"domain":29,"name":"alu_opcode1","bits":[7,0],"width":8,"desc":"alu_opcode1"},{"domain":29,"name":"alu_opcode0","bits":[15,8],"width":8,"desc":"alu_opcode0"},{"domain":29,"name":"yval_vld","bits":[19,16],"width":4,"desc":"{vld[0..3]} 忽略, RTL未设置"},{"domain":29,"name":"yval3","bits":[27,20],"width":8,"desc":"yval[3]；有效性看 yval_btot[3]，为0无效"},{"domain":29,"name":"yval2_lo","bits":[31,28],"width":4,"desc":"yval[2][3:0]；有效性看 yval_btot[2]，为0无效"},{"domain":30,"name":"yval2_hi","bits":[3,0],"width":4,"desc":"yval[2][7:4]；有效性看 yval_btot[2]，为0无效"},{"domain":30,"name":"yval1","bits":[11,4],"width":8,"desc":"yval[1]；有效性看 yval_btot[1]，为0无效"},{"domain":30,"name":"yval0","bits":[19,12],"width":8,"desc":"yval[0]；有效性看 yval_btot[0]，为0无效"},{"domain":30,"name":"yval_btot3","bits":[27,20],"width":8,"desc":"yval_btot[3] 为0表示yval无效"},{"domain":30,"name":"yval_btot2","bits":[31,28],"width":4,"desc":"yval_btot[2] 为0表示yval无效"},{"domain":31,"name":"yval_btot1","bits":[3,0],"width":4,"desc":"yval_btot[1] 为0表示yval无效"},{"domain":31,"name":"yval_btot0","bits":[7,4],"width":4,"desc":"yval_btot[0] 为0表示yval无效"},{"domain":31,"name":"rsv","bits":[31,8],"width":24,"desc":"Rsv"},{"domain":32,"name":"Paw0","bits":[31,0],"width":32,"desc":"Paw0[31:0]"},{"domain":33,"name":"Paw0","bits":[31,0],"width":32,"desc":"Paw0[63:32]"},{"domain":34,"name":"Paw0","bits":[31,0],"width":32,"desc":"Paw0[95:64]"},{"domain":35,"name":"Paw0","bits":[31,0],"width":32,"desc":"Paw0[127:96]"},{"domain":36,"name":"Paw1","bits":[31,0],"width":32,"desc":"Paw1[31:0]"},{"domain":37,"name":"Paw1","bits":[31,0],"width":32,"desc":"Paw1[63:32]"},{"domain":38,"name":"Paw1","bits":[31,0],"width":32,"desc":"Paw1[95:64]"},{"domain":39,"name":"Paw1","bits":[31,0],"width":32,"desc":"Paw1[127:96]"},{"domain":40,"name":"Paw2","bits":[31,0],"width":32,"desc":"Paw2[31:0]"},{"domain":41,"name":"Paw2","bits":[31,0],"width":32,"desc":"Paw2[63:32]"},{"domain":42,"name":"Paw2","bits":[31,0],"width":32,"desc":"Paw2[95:64]"},{"domain":43,"name":"Paw2","bits":[31,0],"width":32,"desc":"Paw2[127:96]"},{"domain":44,"name":"Paw3","bits":[31,0],"width":32,"desc":"Paw3[31:0]"},{"domain":45,"name":"Paw3","bits":[31,0],"width":32,"desc":"Paw3[63:32]"},{"domain":46,"name":"Paw3","bits":[31,0],"width":32,"desc":"Paw3[95:64]"},{"domain":47,"name":"Paw3","bits":[31,0],"width":32,"desc":"Paw3[127:96]"},{"domain":48,"name":"Paw4","bits":[31,0],"width":32,"desc":"Paw4[31:0]"},{"domain":49,"name":"Paw4","bits":[31,0],"width":32,"desc":"Paw4[63:32]"},{"domain":50,"name":"Paw4","bits":[31,0],"width":32,"desc":"Paw4[95:64]"},{"domain":51,"name":"Paw4","bits":[31,0],"width":32,"desc":"Paw4[127:96]"}]},"lrr_trace":{"title":"llr/lrr trace","word_count":26,"fields":[{"domain":0,"name":"ctn_u16_en","bits":[15,0],"width":16,"desc":"ctn_u16_en[0]"},{"domain":0,"name":"ctn_u16_en","bits":[31,16],"width":16,"desc":"ctn_u16_en[1]"},{"domain":1,"name":"ctn_u16_en","bits":[15,0],"width":16,"desc":"ctn_u16_en[2]"},{"domain":1,"name":"ctn_u16_en","bits":[31,16],"width":16,"desc":"ctn_u16_en[3]"},{"domain":2,"name":"ctn_u16_en","bits":[15,0],"width":16,"desc":"ctn_u16_en[4]"},{"domain":2,"name":"ctn_u16_en","bits":[31,16],"width":16,"desc":"ctn_u16_en[5]"},{"domain":3,"name":"ctn_u16_en","bits":[15,0],"width":16,"desc":"ctn_u16_en[6]"},{"domain":3,"name":"ctn_u16_en","bits":[31,16],"width":16,"desc":"ctn_u16_en[7]"},{"domain":4,"name":"ctn_u16_en","bits":[15,0],"width":16,"desc":"ctn_u16_en[8]"},{"domain":4,"name":"ctn_u16_en","bits":[31,16],"width":16,"desc":"ctn_u16_en[9]"},{"domain":5,"name":"ctn_u16_en","bits":[15,0],"width":16,"desc":"ctn_u16_en[10]"},{"domain":5,"name":"ctn_u16_en","bits":[31,16],"width":16,"desc":"ctn_u16_en[11]"},{"domain":6,"name":"ctn_u16_en","bits":[15,0],"width":16,"desc":"ctn_u16_en[12]"},{"domain":6,"name":"ctn_u16_en","bits":[31,16],"width":16,"desc":"ctn_u16_en[13]"},{"domain":7,"name":"ctn_u16_en","bits":[15,0],"width":16,"desc":"ctn_u16_en[14]"},{"domain":7,"name":"ctn_u16_en","bits":[31,16],"width":16,"desc":"ctn_u16_en[15]"},{"domain":8,"name":"ctn_u16_val","bits":[15,0],"width":16,"desc":"ctn_u16_val[0]"},{"domain":8,"name":"ctn_u16_val","bits":[31,16],"width":16,"desc":"ctn_u16_val[1]"},{"domain":9,"name":"ctn_u16_val","bits":[15,0],"width":16,"desc":"ctn_u16_val[2]"},{"domain":9,"name":"ctn_u16_val","bits":[31,16],"width":16,"desc":"ctn_u16_val[3]"},{"domain":10,"name":"ctn_u16_val","bits":[15,0],"width":16,"desc":"ctn_u16_val[4]"},{"domain":10,"name":"ctn_u16_val","bits":[31,16],"width":16,"desc":"ctn_u16_val[5]"},{"domain":11,"name":"ctn_u16_val","bits":[15,0],"width":16,"desc":"ctn_u16_val[6]"},{"domain":11,"name":"ctn_u16_val","bits":[31,16],"width":16,"desc":"ctn_u16_val[7]"},{"domain":12,"name":"ctn_u16_val","bits":[15,0],"width":16,"desc":"ctn_u16_val[8]"},{"domain":12,"name":"ctn_u16_val","bits":[31,16],"width":16,"desc":"ctn_u16_val[9]"},{"domain":13,"name":"ctn_u16_val","bits":[15,0],"width":16,"desc":"ctn_u16_val[10]"},{"domain":13,"name":"ctn_u16_val","bits":[31,16],"width":16,"desc":"ctn_u16_val[11]"},{"domain":14,"name":"ctn_u16_val","bits":[15,0],"width":16,"desc":"ctn_u16_val[12]"},{"domain":14,"name":"ctn_u16_val","bits":[31,16],"width":16,"desc":"ctn_u16_val[13]"},{"domain":15,"name":"ctn_u16_val","bits":[15,0],"width":16,"desc":"ctn_u16_val[14]"},{"domain":15,"name":"ctn_u16_val","bits":[31,16],"width":16,"desc":"ctn_u16_val[15]"},{"domain":16,"name":"Lur","bits":[31,0],"width":32,"desc":"Lur[31:0]"},{"domain":17,"name":"Lur","bits":[31,0],"width":32,"desc":"Lur[63:32]"},{"domain":18,"name":"Lur","bits":[31,0],"width":32,"desc":"Lur[95:64]"},{"domain":19,"name":"Lur","bits":[31,0],"width":32,"desc":"Lur[127:96]"},{"domain":20,"name":"Lur","bits":[31,0],"width":32,"desc":"Lur[159:128]"},{"domain":21,"name":"Lur","bits":[31,0],"width":32,"desc":"Lur[191:160]"},{"domain":22,"name":"Lur","bits":[31,0],"width":32,"desc":"Lur[223:192]"},{"domain":23,"name":"Lur","bits":[31,0],"width":32,"desc":"Lur[255:224]"},{"domain":24,"name":"Lur","bits":[31,0],"width":32,"desc":"Lur[287:256]"},{"domain":25,"name":"Lur","bits":[9,0],"width":10,"desc":"Lur[297:288]"},{"domain":25,"name":"rsv","bits":[31,10],"width":22,"desc":"保留"}]},"egr_trace":{"title":"egr trace","word_count":54,"fields":[{"domain":0,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs0 提取 psv[31:0]"},{"domain":1,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs0 提取 psv[63:32]"},{"domain":2,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs0 提取 psv[95:64]"},{"domain":3,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs0 提取 psv[127:96]"},{"domain":4,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs0 提取 psv[159:128]"},{"domain":5,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs0 提取 psv[191:160]"},{"domain":6,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs0 提取 psv[223:192]"},{"domain":7,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs0 提取 psv[255:224]"},{"domain":8,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs0 提取 psv[287:256]"},{"domain":9,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs0 提取 psv[319:288]"},{"domain":10,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs0 提取 psv[351:320]"},{"domain":11,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs0 提取 psv[383:352]"},{"domain":12,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs0 提取 psv[415:384]"},{"domain":13,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs0 提取 psv[447:416]"},{"domain":14,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs0 提取 psv[479:448]"},{"domain":15,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs0 提取 psv[511:480]"},{"domain":16,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs1 提取 psv[31:0]"},{"domain":17,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs1 提取 psv[63:32]"},{"domain":18,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs1 提取 psv[95:64]"},{"domain":19,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs1 提取 psv[127:96]"},{"domain":20,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs1 提取 psv[159:128]"},{"domain":21,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs1 提取 psv[191:160]"},{"domain":22,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs1 提取 psv[223:192]"},{"domain":23,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs1 提取 psv[255:224]"},{"domain":24,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs1 提取 psv[287:256]"},{"domain":25,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs1 提取 psv[319:288]"},{"domain":26,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs1 提取 psv[351:320]"},{"domain":27,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs1 提取 psv[383:352]"},{"domain":28,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs1 提取 psv[415:384]"},{"domain":29,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs1 提取 psv[447:416]"},{"domain":30,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs1 提取 psv[479:448]"},{"domain":31,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs1 提取 psv[511:480]（图中误写 [511:32]）"},{"domain":32,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs2 提取 psv[31:0]"},{"domain":33,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs2 提取 psv[63:32]"},{"domain":34,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs2 提取 psv[95:64]"},{"domain":35,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs2 提取 psv[127:96]"},{"domain":36,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs2 提取 psv[159:128]"},{"domain":37,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs2 提取 psv[191:160]"},{"domain":38,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs2 提取 psv[223:192]"},{"domain":39,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs2 提取 psv[255:224]"},{"domain":40,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs2 提取 psv[287:256]"},{"domain":41,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs2 提取 psv[319:288]"},{"domain":42,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs2 提取 psv[351:320]"},{"domain":43,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs2 提取 psv[383:352]"},{"domain":44,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs2 提取 psv[415:384]"},{"domain":45,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs2 提取 psv[447:416]"},{"domain":46,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs2 提取 psv[479:448]"},{"domain":47,"name":"egr_psv","bits":[31,0],"width":32,"desc":"ofs2 提取 psv[511:480]（图中误写 [511:32]）"},{"domain":48,"name":"lpm_result","bits":[31,0],"width":32,"desc":"lpm[31:0] → payloads.lpm_mpl_rsp_data"},{"domain":49,"name":"lpm_result","bits":[31,0],"width":32,"desc":"lpm[63:32]"},{"domain":50,"name":"lpm_result","bits":[11,0],"width":12,"desc":"lpm[75:64]"},{"domain":50,"name":"rsv","bits":[31,12],"width":20,"desc":"rsv"},{"domain":51,"name":"local_engine_result","bits":[31,0],"width":32,"desc":"Local engine rsp data[31:0]"},{"domain":52,"name":"local_engine_result","bits":[31,0],"width":32,"desc":"Local engine rsp data[63:32]"},{"domain":53,"name":"local_engine_result","bits":[31,0],"width":32,"desc":"Local engine rsp data[95:64]"}]}},"statistics":{"trace_ctrl":{"title":"Trace 使能与抓取控制","registers":{"ppt_mode":{"offset":4864,"width":32,"reset":0,"fields":[{"name":"rsv","bits":[31,3],"width":29,"access":"ro","desc":"保留"},{"name":"mode","bits":[2,0],"width":3,"access":"rw","type":"cfg","reset":1,"desc":"pp trace mode：0=不使能；1/2=抓有ppt标识；3=抓进入的第一包；4=抓进入的最新包；其它=不使能"}]},"mau_trace_crs":{"offset":4868,"width":32,"reset":0,"fields":[{"name":"rsv","bits":[31,15],"width":17,"access":"ro","desc":"保留"},{"name":"local_engine_trace_vld","bits":[14,14],"width":1,"access":"ro","type":"sts","desc":"local engine 抓取信息有效"},{"name":"lpm_trace_vld","bits":[13,13],"width":1,"access":"ro","type":"sts","desc":"lpm 抓取信息有效"},{"name":"egr_psv_trace_vld","bits":[12,12],"width":1,"access":"ro","type":"sts","desc":"egr_psv 抓取信息有效"},{"name":"llr_trace_vld","bits":[11,11],"width":1,"access":"ro","type":"sts","desc":"llr/lrr 抓取信息有效"},{"name":"vme_trace_vld","bits":[10,10],"width":1,"access":"ro","type":"sts","desc":"vme0-4 抓取信息有效"},{"name":"keygen_trace_vld","bits":[9,9],"width":1,"access":"ro","type":"sts","desc":"keygen 抓取信息有效"},{"name":"cls_trace_vld","bits":[8,8],"width":1,"access":"ro","type":"sts","desc":"cls 抓取信息有效"},{"name":"egr_psv_512bit_ofs_2","bits":[7,6],"width":2,"access":"rw","type":"cfg","reset":2,"desc":"出口PSV 512bit 片选：0=[1535:1024]；1=[1023:512]；2=[511:0]；其它等同0"},{"name":"egr_psv_512bit_ofs_1","bits":[5,4],"width":2,"access":"rw","type":"cfg","reset":1,"desc":"出口PSV 512bit 片选（同上）"},{"name":"egr_psv_512bit_ofs_0","bits":[3,2],"width":2,"access":"rw","type":"cfg","reset":0,"desc":"出口PSV 512bit 片选（同上）"},{"name":"igr_psv_512bit_ofs","bits":[1,0],"width":2,"access":"rw","type":"cfg","reset":0,"desc":"入口PSV 512bit 片选：0=[1535:1024]；1=[1023:512]；2=[511:0]；其它等同0"}]}}},"other_cfg":{"title":"其它配置","registers":{"local_engine_val":{"offset":4800,"width":32,"fields":[{"name":"rsv","bits":[31,22],"width":10,"access":"ro","desc":"保留"},{"name":"cfg_nhop_width","bits":[21,17],"width":5,"access":"rw","type":"cfg","reset":18,"desc":"nhop 宽度"},{"name":"cfg_dip_nhop_width","bits":[16,12],"width":5,"access":"rw","type":"cfg","reset":18,"desc":"dip nhop 宽度"},{"name":"cfg_sip_nhop_width","bits":[11,7],"width":5,"access":"rw","type":"cfg","reset":18,"desc":"sip nhop 宽度"},{"name":"cfg_lpm_en","bits":[6,6],"width":1,"access":"rw","type":"cfg","desc":"lpm 使能"},{"name":"cfg_vlan_filter_en","bits":[5,5],"width":1,"access":"rw","type":"cfg","desc":"vlan filter 使能"},{"name":"cfg_stp_filter_en","bits":[4,4],"width":1,"access":"rw","type":"cfg","desc":"stp filter 使能"},{"name":"cfg_l4_port_rng_en","bits":[3,3],"width":1,"access":"rw","type":"cfg","desc":"l4 port range 使能"},{"name":"cfg_copp_en","bits":[2,2],"width":1,"access":"rw","type":"cfg","desc":"copp 使能"},{"name":"cfg_ecmp_en","bits":[1,1],"width":1,"access":"rw","type":"cfg","desc":"ecmp 使能"},{"name":"cfg_hash_en","bits":[0,0],"width":1,"access":"rw","type":"cfg","desc":"hash 使能"}]},"endianness_adjust":{"offset":4804,"width":32,"fields":[{"name":"rsv","bits":[31,4],"width":28,"access":"ro","desc":"保留"},{"name":"ingress_u32_revert","bits":[3,3],"width":1,"access":"rw","type":"cfg","desc":"入口 u32 字节序翻转"},{"name":"ingress_u1_revert","bits":[2,2],"width":1,"access":"rw","type":"cfg","desc":"入口 u1 翻转"},{"name":"egress_u32_revert","bits":[1,1],"width":1,"access":"rw","type":"cfg","desc":"出口 u32 字节序翻转"},{"name":"egress_u1_revert","bits":[0,0],"width":1,"access":"rw","type":"cfg","desc":"出口 u1 翻转"}]}}},"cfg_inst":{"title":"MAU / Keygen 指令配置","note":"block b_mau；基址相对 0x0","registers":{"mau_ts":{"offset":0,"width":32,"fields":[{"name":"ts","bits":[31,0],"width":32,"desc":"timestamp"}]},"mau_cfg_inst0_0":{"offset":4,"width":32,"fields":[{"name":"rsv","bits":[31,1],"width":31,"desc":"保留"},{"name":"proc_en","bits":[0,0],"width":1,"desc":"process enable"}]},"mau_cfg_inst0_1":{"offset":8,"width":32,"fields":[{"name":"reg_cfg_0","bits":[31,0],"width":32,"desc":"cfg word0"}]},"mau_cfg_inst0_2":{"offset":12,"width":32,"fields":[{"name":"reg_cfg_1","bits":[31,0],"width":32,"desc":"cfg word1"}]},"mau_cfg_inst0_3":{"offset":16,"width":32,"fields":[{"name":"reg_cfg_2","bits":[31,0],"width":32,"desc":"cfg word2"}]},"mau_cfg_inst0_4":{"offset":20,"width":32,"fields":[{"name":"reg_cfg_3","bits":[31,0],"width":32,"desc":"cfg word3"}]},"mau_cfg_inst0_5":{"offset":24,"width":32,"fields":[{"name":"reg_cfg_4","bits":[31,0],"width":32,"desc":"cfg word4"}]},"mau_cfg_inst0_6":{"offset":28,"width":32,"fields":[{"name":"reg_cfg_5","bits":[31,0],"width":32,"desc":"cfg word5"}]},"mau_cfg_inst0_7":{"offset":32,"width":32,"fields":[{"name":"reg_cfg_6","bits":[31,0],"width":32,"desc":"cfg word6"}]},"mau_cfg_inst0_8":{"offset":36,"width":32,"fields":[{"name":"reg_cfg_7","bits":[31,0],"width":32,"desc":"cfg word7"}]}}},"fw_init":{"title":"FW 初始化与 IACRA","registers":{"fw_mau_init_start":{"offset":1764,"width":32,"desc":"initial FD filter","fields":[{"name":"reserved","bits":[31,1],"width":31,"desc":"保留"},{"name":"init_start","bits":[0,0],"width":1,"desc":"发起初始化"}]},"fw_mau_init_done":{"offset":1768,"width":32,"desc":"initial status of FD filter","fields":[{"name":"reserved","bits":[31,1],"width":31,"desc":"保留"},{"name":"init_done","bits":[0,0],"width":1,"desc":"初始化完成"}]}}},"fw_ecc":{"title":"FW ECC 与中断","registers":{"fw_insert_ecc_err":{"offset":3348,"width":32,"desc":"force ecc error by software","fields":[{"name":"err_2bit","bits":[31,31],"width":1,"access":"rw1s","type":"upd","desc":"注入 2bit ecc 错"},{"name":"err_1bit","bits":[30,30],"width":1,"access":"rw1s","type":"upd","desc":"注入 1bit ecc 错"},{"name":"rsv","bits":[29,16],"width":14,"access":"ro","desc":"保留"},{"name":"u8_idx_0","bits":[15,12],"width":4,"access":"rw","type":"cfg","desc":"u8 index0"},{"name":"u8_idx_1","bits":[11,8],"width":4,"access":"rw","type":"cfg","desc":"u8 index1"},{"name":"u8_idx_2","bits":[7,4],"width":4,"access":"rw","type":"cfg","desc":"u8 index2"},{"name":"u8_idx_3","bits":[3,0],"width":4,"access":"rw","type":"cfg","desc":"u8 index3"}]},"fw_dbg_ecc_cnt":{"offset":3352,"width":32,"desc":"ecc error cnt","fields":[{"name":"rsv","bits":[31,16],"width":16,"access":"ro","desc":"保留"},{"name":"cnt2","bits":[15,8],"width":8,"access":"rc","type":"scnt","desc":"2bit ecc 计数"},{"name":"cnt1","bits":[7,0],"width":8,"access":"rc","type":"scnt","desc":"1bit ecc 计数"}]},"fw_int_en":{"offset":3356,"width":32,"desc":"ecc interrupt enable","fields":[{"name":"rsv","bits":[31,3],"width":29,"desc":"保留"},{"name":"fifo_overflow","bits":[2,2],"width":1,"access":"rw","type":"cfg","desc":"fifo overflow 中断使能"},{"name":"ecc_1bit_en","bits":[1,1],"width":1,"access":"rw","type":"cfg","desc":"1bit ecc 中断使能"},{"name":"ecc_2bit_en","bits":[0,0],"width":1,"access":"rw","type":"cfg","desc":"2bit ecc 中断使能"}]},"fw_int_set":{"offset":3360,"width":32,"desc":"set ecc interrupt","fields":[{"name":"rsv","bits":[31,3],"width":29,"desc":"保留"},{"name":"fifo_overflow","bits":[2,2],"width":1,"access":"rw1s","type":"upd","desc":"置位 fifo overflow"},{"name":"ecc_1bit_en","bits":[1,1],"width":1,"access":"rw1s","type":"upd","desc":"置位 1bit ecc"},{"name":"ecc_2bit_en","bits":[0,0],"width":1,"access":"rw1s","type":"upd","desc":"置位 2bit ecc"}]},"fw_int_clr":{"offset":3364,"width":32,"desc":"clear ecc interrupt","fields":[{"name":"rsv","bits":[31,3],"width":29,"desc":"保留"},{"name":"fifo_overflow","bits":[2,2],"width":1,"access":"rw1c","type":"upd","desc":"清 fifo overflow"},{"name":"ecc_1bit_en","bits":[1,1],"width":1,"access":"rw1c","type":"upd","desc":"清 1bit ecc"},{"name":"ecc_2bit_en","bits":[0,0],"width":1,"access":"rw1c","type":"upd","desc":"清 2bit ecc"}]},"fw_int_sts":{"offset":3368,"width":32,"desc":"ecc error interrupt status","fields":[{"name":"rsv","bits":[31,3],"width":29,"desc":"保留"},{"name":"fifo_overflow","bits":[2,2],"width":1,"access":"ro","type":"sts","desc":"fifo overflow 状态"},{"name":"ecc_1bit_en","bits":[1,1],"width":1,"access":"ro","type":"sts","desc":"1bit ecc 状态"},{"name":"ecc_2bit_en","bits":[0,0],"width":1,"access":"ro","type":"sts","desc":"2bit ecc 状态"}]},"fw_int_ecc_info":{"offset":3372,"width":32,"desc":"ecc error interrupt info","fields":[{"name":"rsv","bits":[31,26],"width":6,"desc":"保留"},{"name":"ecc_error_flg","bits":[25,24],"width":2,"access":"ro","type":"sts","desc":"ecc error flag"},{"name":"mem_addr_2bit","bits":[23,16],"width":8,"access":"ro","type":"sts","desc":"2bit 错 mem 地址"},{"name":"mem_id_2bit","bits":[15,12],"width":4,"access":"ro","type":"sts","desc":"2bit 错 mem id"},{"name":"mem_addr_1bit","bits":[11,4],"width":8,"access":"ro","type":"sts","desc":"1bit 错 mem 地址"},{"name":"mem_id_1bit","bits":[3,0],"width":4,"access":"ro","type":"sts","desc":"1bit 错 mem id"}]}}},"fw_dbg":{"title":"FW 调试计数与 Credit","registers":{"fw_fifo_sts":{"offset":3376,"width":32,"count":11,"step":4,"desc":"fifo status（数组 0..10）","fields":[{"name":"reserved","bits":[31,16],"width":16,"desc":"保留"},{"name":"over_drop","bits":[15,12],"width":4,"access":"rc","type":"scnt","desc":"over drop 计数"},{"name":"real_empty","bits":[11,11],"width":1,"access":"ro","type":"sts","reset":1,"desc":"real empty"},{"name":"almost_empty","bits":[10,10],"width":1,"access":"ro","type":"sts","desc":"almost empty"},{"name":"real_full","bits":[9,9],"width":1,"access":"ro","type":"sts","desc":"real full"},{"name":"almost_full","bits":[8,8],"width":1,"access":"ro","type":"sts","desc":"almost full"},{"name":"fifo_cnt","bits":[7,0],"width":8,"access":"ro","type":"sts","desc":"fifo 深度计数"}]},"fw_dbg_cnt":{"offset":3420,"width":32,"count":14,"step":4,"desc":"debug counter（数组 0..13，每项 1×u32）","items":[{"name":"igr_pkt","desc":"入口报文数目"},{"name":"egr_pkt","desc":"出口报文数目"},{"name":"mpl_lookup","desc":"查询MPL数目"},{"name":"mpl_return","desc":"MPL返回数目"},{"name":"lpm_lookup","desc":"查询LPM数目"},{"name":"lpm_return","desc":"LPM返回数目"},{"name":"mpl_hit0","desc":"mpl hit[0] 数目"},{"name":"mpl_hit1","desc":"mpl hit[1] 数目"},{"name":"lpm_hit1","desc":"lpm hit[1] 数目"},{"name":"lpm_hit0","desc":"lpm hit[0] 数目"},{"name":"bypass_cls_miss_mau","desc":"bypass/cls-miss mau 数目"},{"name":"bypass_mpl","desc":"bypass mpl 数目"},{"name":"bypass_lpm","desc":"bypass lpm 数目"},{"name":"cls_hit","desc":"cls hit数目"}],"fields":[{"name":"cnt","bits":[31,0],"width":32,"type":"sts","desc":"计数"}]},"fw_stistics_ctl":{"offset":3476,"width":32,"desc":"statistics control（寄存器名按表：fw_stistics_ctl）","fields":[{"name":"rsv","bits":[31,2],"width":30,"desc":"保留"},{"name":"sw_rc_en","bits":[1,1],"width":1,"access":"rw","type":"cfg","desc":"软件读清使能"},{"name":"en","bits":[0,0],"width":1,"access":"rw","type":"cfg","desc":"统计使能"}]},"fw_dbg_credit":{"offset":3484,"width":32,"fields":[{"name":"egr_credit_cnt","bits":[31,28],"width":4,"type":"sts","desc":"egr credit"},{"name":"mid_credit_cnt","bits":[27,24],"width":4,"type":"sts","desc":"mid credit"},{"name":"lpa_credit_cnt","bits":[23,18],"width":6,"type":"sts","desc":"lpa credit"},{"name":"igr_credit_cnt2","bits":[17,12],"width":6,"type":"sts","desc":"igr credit2"},{"name":"igr_credit_cnt1","bits":[11,6],"width":6,"type":"sts","desc":"igr credit1"},{"name":"igr_credit_cnt0","bits":[5,0],"width":6,"type":"sts","desc":"igr credit0"}]}}},"bp_stat":{"title":"反压（BP）统计","registers":{"fw_dbg_bp_his":{"offset":6428,"width":32,"desc":"bp history","fields":[{"name":"rsv","bits":[31,5],"width":27,"desc":"保留"},{"name":"localeng_ppu_bp","bits":[4,4],"width":1,"type":"sts","desc":"本地 ENGINE 反压历史"},{"name":"lpm_ppu_bp","bits":[3,3],"width":1,"type":"sts","desc":"LPM 反压历史"},{"name":"next_ppu_bp","bits":[2,2],"width":1,"type":"sts","desc":"后级反压历史"},{"name":"mpl_ppu_bp","bits":[1,1],"width":1,"type":"sts","desc":"MPL 反压历史"},{"name":"pre_ppu_bp","bits":[0,0],"width":1,"type":"sts","desc":"前级/本级反压历史"}]},"fw_dbg_bp_cur":{"offset":6432,"width":32,"desc":"bp current","fields":[{"name":"rsv","bits":[31,5],"width":27,"desc":"保留"},{"name":"localeng_ppu_bp","bits":[4,4],"width":1,"type":"sts","desc":"本地 ENGINE 当前反压"},{"name":"lpm_ppu_bp","bits":[3,3],"width":1,"type":"sts","desc":"LPM 当前反压"},{"name":"next_ppu_bp","bits":[2,2],"width":1,"type":"sts","desc":"后级当前反压"},{"name":"mpl_ppu_bp","bits":[1,1],"width":1,"type":"sts","desc":"MPL 当前反压"},{"name":"pre_ppu_bp","bits":[0,0],"width":1,"type":"sts","desc":"前级/本级当前反压"}]},"fw_dbg_bp_max_cnt":{"offset":6436,"width":32,"count":5,"step":4,"desc":"历史最长反压 cycle 数；[0]本级MAU [1]mpl [2]后级 [3]LPM [4]本地ENGINE","fields":[{"name":"rsv","bits":[31,24],"width":8,"desc":"保留"},{"name":"bp_max_cnt","bits":[23,0],"width":24,"type":"sts","desc":"最长反压 cycle"}]},"fw_dbg_bp_max_cnt_clr":{"offset":6456,"width":32,"fields":[{"name":"rsv","bits":[31,5],"width":27,"desc":"保留"},{"name":"bp_max_cnt_clr","bits":[4,0],"width":5,"access":"rw","type":"cfg","desc":"清最长反压记录；bit[0..4] 对应本级/mpl/后级/LPM/本地ENGINE"}]},"fw_dbg_bp_avg_prd":{"offset":6460,"width":32,"count":5,"step":4,"desc":"平均时长统计周期；[0]本级MAU反压本级 [1]apl反压本级 [2]后级MAU/pedt/ipp_ots [3]LPM反压本级 [4]本地ENGINE","fields":[{"name":"rsv","bits":[31,17],"width":15,"desc":"保留"},{"name":"bp_avg_prd_vld","bits":[16,16],"width":1,"type":"sts","desc":"平均周期有效"},{"name":"bp_avg_prd","bits":[15,0],"width":16,"access":"rw","type":"cfg","desc":"平均时长统计周期"}]},"fw_dbg_bp_avg_cnt":{"offset":6480,"width":32,"count":5,"step":4,"desc":"平均周期内反压 cycle 计数（与 bp_avg_prd 同序）","fields":[{"name":"rsv","bits":[31,16],"width":16,"access":"ro","desc":"保留"},{"name":"bp_avg_cnt","bits":[15,0],"width":16,"access":"ro","type":"sts","desc":"平均时长统计周期内反压 cycle"}]},"fw_dbg_bp_set":{"offset":6500,"width":32,"fields":[{"name":"rsv","bits":[31,1],"width":31,"access":"ro","desc":"保留"},{"name":"bp_set","bits":[0,0],"width":1,"access":"rw","type":"cfg","desc":"强制本地MAU反压前级模块"}]},"fw_dbg_bp_ign":{"offset":6504,"width":32,"fields":[{"name":"rsv","bits":[31,4],"width":28,"access":"ro","desc":"保留"},{"name":"bp_ign","bits":[3,0],"width":4,"access":"rw","type":"cfg","desc":"忽略反压本级MAU；[0]apl [1]后级 [2]LPM [3]本地ENGINE"}]}}},"fifo_thres":{"title":"FIFO 将满门限与 Credit 门限","note":"threshold 默认值以 fifo2.jpg 可见行为准","registers":{"fw_fifo_full_threshold":{"offset":6508,"width":32,"count":10,"step":4,"desc":"fifo 将满水线；默认值见 defaults","defaults":[12,4,4,28,28,38,6,30,36,36],"fields":[{"name":"rsv","bits":[31,7],"width":25,"access":"ro","desc":"保留"},{"name":"threshold","bits":[6,0],"width":7,"access":"rw","type":"cfg","desc":"fifo 将满水线"}]},"fw_credit_thres":{"offset":6548,"width":32,"desc":"credit max 门限打包","fields":[{"name":"threshold5","bits":[31,28],"width":4,"access":"rw","type":"cfg","reset":3,"desc":"credit threshold5"},{"name":"threshold4","bits":[27,24],"width":4,"access":"rw","type":"cfg","reset":8,"desc":"credit threshold4"},{"name":"threshold3","bits":[23,18],"width":6,"access":"rw","type":"cfg","reset":42,"desc":"credit threshold3"},{"name":"threshold2","bits":[17,12],"width":6,"access":"rw","type":"cfg","reset":38,"desc":"credit threshold2"},{"name":"threshold1","bits":[11,6],"width":6,"access":"rw","type":"cfg","reset":46,"desc":"credit threshold1"},{"name":"threshold0","bits":[5,0],"width":6,"access":"rw","type":"cfg","reset":35,"desc":"credit threshold0"}]}}}}};
+  window.IPARSER_LAYOUTS = {"word_bits":32,"bit_order":"lsb0_in_word","traces":{"iparser_trace":{"title":"Iparser register trace","word_count":109,"fields":[{"domain":0,"name":"dbg_hdr_info_0","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"hdr info word 0"},{"domain":1,"name":"dbg_hdr_info_1","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"hdr info word 1"},{"domain":2,"name":"dbg_hdr_info_2","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"hdr info word 2"},{"domain":3,"name":"dbg_hdr_info_3","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"hdr info word 3"},{"domain":4,"name":"dbg_hdr_info_4","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"hdr info word 4"},{"domain":5,"name":"dbg_hdr_info_5","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"hdr info word 5"},{"domain":6,"name":"dbg_hdr_info_6","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"hdr info word 6"},{"domain":7,"name":"dbg_hdr_info_7","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"hdr info word 7"},{"domain":8,"name":"dbg_hdr_info_8","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"hdr info word 8"},{"domain":9,"name":"dbg_hdr_info_9","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"hdr info word 9"},{"domain":10,"name":"dbg_hdr_info_10","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"hdr info word 10"},{"domain":11,"name":"dbg_hdr_info_11","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"hdr info word 11"},{"domain":12,"name":"dbg_hdr_info_12","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"hdr info word 12"},{"domain":13,"name":"dbg_hdr_info_13","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"hdr info word 13"},{"domain":14,"name":"dbg_hdr_info_14","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"hdr info word 14"},{"domain":15,"name":"dbg_hdr_info_15","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"hdr info word 15"},{"domain":16,"name":"dbg_psv_info_0","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"psv info word 0"},{"domain":17,"name":"dbg_psv_info_1","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"psv info word 1"},{"domain":18,"name":"dbg_psv_info_2","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"psv info word 2"},{"domain":19,"name":"dbg_psv_info_3","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"psv info word 3"},{"domain":20,"name":"dbg_psv_info_4","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"psv info word 4"},{"domain":21,"name":"dbg_psv_info_5","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"psv info word 5"},{"domain":22,"name":"dbg_psv_info_6","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"psv info word 6"},{"domain":23,"name":"dbg_psv_info_7","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"psv info word 7"},{"domain":24,"name":"dbg_psv_info_8","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"psv info word 8"},{"domain":25,"name":"dbg_psv_info_9","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"psv info word 9"},{"domain":26,"name":"dbg_psv_info_10","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"psv info word 10"},{"domain":27,"name":"dbg_psv_info_11","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"psv info word 11"},{"domain":28,"name":"dbg_psv_info_12","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"psv info word 12"},{"domain":29,"name":"dbg_psv_info_13","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"psv info word 13"},{"domain":30,"name":"dbg_psv_info_14","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"psv info word 14"},{"domain":31,"name":"dbg_psv_info_15","bits":[31,0],"width":32,"byte_rev":"u8x4","desc":"psv info word 15"},{"domain":32,"name":"dbg_ppu_out_data0_rsv","bits":[31,14],"width":18,"desc":"reserved"},{"domain":32,"name":"dbg_ppu_out_data0_pktid","bits":[13,5],"width":9,"desc":"输出的 pktid"},{"domain":32,"name":"dbg_ppu_out_data0_portid","bits":[4,0],"width":5,"desc":"输出的 portid"},{"domain":33,"name":"ZONE_0_HINT","bits":[7,0],"width":8,"desc":"低 8bit：ZONE_0_HINT"},{"domain":33,"name":"ZONE_1_HINT","bits":[19,8],"width":12,"desc":"中 12bit：ZONE_1_HINT"},{"domain":33,"name":"ZONE_2_HINT","bits":[31,20],"width":12,"desc":"高 12bit：ZONE_2_HINT"},{"domain":34,"name":"dbg_eof_out_data_rsv","bits":[31,28],"width":4,"desc":"reserved"},{"domain":34,"name":"dbg_eof_out_data_frm_size","bits":[27,14],"width":14,"desc":"输出的 frm_size"},{"domain":34,"name":"dbg_eof_out_data_pktid","bits":[13,5],"width":9,"desc":"输出的 pktid"},{"domain":34,"name":"dbg_eof_out_data_portid","bits":[4,0],"width":5,"desc":"输出的 portid"},{"domain":35,"name":"dbg_mpl_req_info_0","bits":[31,0],"width":32,"desc":"mpl req info word 0"},{"domain":36,"name":"dbg_mpl_req_info_1","bits":[31,0],"width":32,"desc":"mpl req info word 1"},{"domain":37,"name":"dbg_mpl_req_info_2","bits":[31,0],"width":32,"desc":"mpl req info word 2"},{"domain":38,"name":"dbg_mpl_req_info_3","bits":[31,0],"width":32,"desc":"mpl req info word 3"},{"domain":39,"name":"dbg_mpl_req_info_4","bits":[31,0],"width":32,"desc":"mpl req info word 4"},{"domain":40,"name":"dbg_mpl_req_info_5","bits":[31,0],"width":32,"desc":"mpl req info word 5"},{"domain":41,"name":"dbg_mpl_req_info_6","bits":[31,0],"width":32,"desc":"mpl req info word 6"},{"domain":42,"name":"dbg_mpl_req_info_7","bits":[31,0],"width":32,"desc":"mpl req info word 7"},{"domain":43,"name":"dbg_mpl_req_info_8","bits":[31,0],"width":32,"desc":"mpl req info word 8"},{"domain":44,"name":"dbg_mpl_req_info_9","bits":[31,0],"width":32,"desc":"mpl req info word 9"},{"domain":45,"name":"dbg_mpl_req_info_10","bits":[31,0],"width":32,"desc":"mpl req info word 10"},{"domain":46,"name":"dbg_mpl_req_info_11","bits":[31,0],"width":32,"desc":"mpl req info word 11"},{"domain":47,"name":"dbg_mpl_rsp_info_0","bits":[31,0],"width":32,"desc":"mpl rsp info word 0"},{"domain":48,"name":"dbg_mpl_rsp_info_1","bits":[31,0],"width":32,"desc":"mpl rsp info word 1"},{"domain":49,"name":"dbg_mpl_rsp_info_2","bits":[31,0],"width":32,"desc":"mpl rsp info word 2"},{"domain":50,"name":"dbg_mpl_rsp_info_3","bits":[31,0],"width":32,"desc":"mpl rsp info word 3"},{"domain":51,"name":"dbg_mpl_rsp_info_4","bits":[31,0],"width":32,"desc":"mpl rsp info word 4"},{"domain":52,"name":"dbg_mpl_rsp_info_5","bits":[31,0],"width":32,"desc":"mpl rsp info word 5"},{"domain":53,"name":"dbg_mpl_rsp_info_6","bits":[31,0],"width":32,"desc":"mpl rsp info word 6"},{"domain":54,"name":"dbg_mpl_rsp_info_7","bits":[31,0],"width":32,"desc":"mpl rsp info word 7"},{"domain":55,"name":"dbg_mpl_rsp_info_8","bits":[31,0],"width":32,"desc":"mpl rsp info word 8"},{"domain":56,"name":"dbg_mpl_rsp_info1","bits":[31,0],"width":32,"desc":"mpl 响应信息 1"},{"domain":57,"name":"dbg_stg_tcam_match_rcd0_0","bits":[31,0],"width":32,"desc":"stg tcam match record 0 word 0"},{"domain":58,"name":"dbg_stg_tcam_match_rcd0_1","bits":[31,0],"width":32,"desc":"stg tcam match record 0 word 1"},{"domain":59,"name":"dbg_stg_tcam_match_rcd0_2","bits":[31,0],"width":32,"desc":"stg tcam match record 0 word 2"},{"domain":60,"name":"dbg_stg_tcam_match_rcd0_3","bits":[31,0],"width":32,"desc":"stg tcam match record 0 word 3"},{"domain":61,"name":"dbg_stg_tcam_match_rcd0_4","bits":[31,0],"width":32,"desc":"stg tcam match record 0 word 4"},{"domain":62,"name":"dbg_stg_tcam_match_rcd0_5","bits":[31,0],"width":32,"desc":"stg tcam match record 0 word 5"},{"domain":63,"name":"dbg_stg_tcam_match_rcd1_0","bits":[31,0],"width":32,"desc":"stg tcam match record 1 word 0"},{"domain":64,"name":"dbg_stg_tcam_match_rcd1_1","bits":[31,0],"width":32,"desc":"stg tcam match record 1 word 1"},{"domain":65,"name":"dbg_stg_tcam_match_rcd1_2","bits":[31,0],"width":32,"desc":"stg tcam match record 1 word 2"},{"domain":66,"name":"dbg_stg_tcam_match_rcd1_3","bits":[31,0],"width":32,"desc":"stg tcam match record 1 word 3"},{"domain":67,"name":"dbg_stg_tcam_match_rcd1_4","bits":[31,0],"width":32,"desc":"stg tcam match record 1 word 4"},{"domain":68,"name":"dbg_stg_tcam_match_rcd1_5","bits":[31,0],"width":32,"desc":"stg tcam match record 1 word 5"},{"domain":69,"name":"dbg_stg_tcam_match_rcd2_0","bits":[31,0],"width":32,"desc":"stg tcam match record 2 word 0"},{"domain":70,"name":"dbg_stg_tcam_match_rcd2_1","bits":[31,0],"width":32,"desc":"stg tcam match record 2 word 1"},{"domain":71,"name":"dbg_stg_info_rcd_0","bits":[31,0],"width":32,"desc":"stg info record word 0"},{"domain":72,"name":"dbg_stg_info_rcd_1","bits":[31,0],"width":32,"desc":"stg info record word 1"},{"domain":73,"name":"dbg_stg_info_rcd_2","bits":[31,0],"width":32,"desc":"stg info record word 2"},{"domain":74,"name":"dbg_stg_info_rcd_3","bits":[31,0],"width":32,"desc":"stg info record word 3"},{"domain":75,"name":"dbg_stg_info_rcd_4","bits":[31,0],"width":32,"desc":"stg info record word 4"},{"domain":76,"name":"dbg_stg_info_rcd_5","bits":[31,0],"width":32,"desc":"stg info record word 5"},{"domain":77,"name":"dbg_stg_info_rcd_6","bits":[31,0],"width":32,"desc":"stg info record word 6"},{"domain":78,"name":"dbg_stg_info_rcd_7","bits":[31,0],"width":32,"desc":"stg info record word 7"},{"domain":79,"name":"dbg_stg_info_rcd_8","bits":[31,0],"width":32,"desc":"stg info record word 8"},{"domain":80,"name":"dbg_stg_info_rcd_9","bits":[31,0],"width":32,"desc":"stg info record word 9"},{"domain":81,"name":"dbg_stg_done_rcd_0","bits":[31,0],"width":32,"desc":"stg done record word 0"},{"domain":82,"name":"dbg_stg_done_rcd_1","bits":[31,0],"width":32,"desc":"stg done record word 1"},{"domain":83,"name":"dbg_stg_done_rcd_2","bits":[31,0],"width":32,"desc":"stg done record word 2"},{"domain":84,"name":"dbg_stg_done_rcd_3","bits":[31,0],"width":32,"desc":"stg done record word 3"},{"domain":85,"name":"dbg_stg_done_rcd_4","bits":[31,0],"width":32,"desc":"stg done record word 4"},{"domain":86,"name":"dbg_stg_done_rcd_5","bits":[31,0],"width":32,"desc":"stg done record word 5"},{"domain":87,"name":"dbg_exm_info0_match_key","bits":[31,16],"width":16,"desc":"match key"},{"domain":87,"name":"dbg_exm_info0_ral_key","bits":[15,0],"width":16,"desc":"ral key (来自 psv 或 vlan 更新后的 psv)"},{"domain":88,"name":"dbg_exm_info1_rsv","bits":[31,5],"width":27,"desc":"reserved"},{"domain":88,"name":"dbg_exm_info1_hit","bits":[4,4],"width":1,"desc":"match hit 标志"},{"domain":88,"name":"dbg_exm_info1_hit_idx","bits":[3,0],"width":4,"desc":"match hit idx"},{"domain":89,"name":"dbg_pstproc_check_flag","bits":[31,0],"width":32,"desc":"pst proc check flag"},{"domain":90,"name":"dbg_pstproc_dptr_rcd0_rsv","bits":[31,30],"width":2,"desc":"reserved"},{"domain":90,"name":"dbg_pstproc_dptr_rcd0_dptr4","bits":[29,24],"width":6,"desc":"dptr4"},{"domain":90,"name":"dbg_pstproc_dptr_rcd0_dptr3","bits":[23,18],"width":6,"desc":"dptr3"},{"domain":90,"name":"dbg_pstproc_dptr_rcd0_dptr2","bits":[17,12],"width":6,"desc":"dptr2"},{"domain":90,"name":"dbg_pstproc_dptr_rcd0_dptr1","bits":[11,6],"width":6,"desc":"dptr1"},{"domain":90,"name":"dbg_pstproc_dptr_rcd0_dptr0","bits":[5,0],"width":6,"desc":"dptr0"},{"domain":91,"name":"dbg_pstproc_dptr_rcd1_rsv","bits":[31,30],"width":2,"desc":"reserved"},{"domain":91,"name":"dbg_pstproc_dptr_rcd1_dptr9","bits":[29,24],"width":6,"desc":"dptr9"},{"domain":91,"name":"dbg_pstproc_dptr_rcd1_dptr8","bits":[23,18],"width":6,"desc":"dptr8"},{"domain":91,"name":"dbg_pstproc_dptr_rcd1_dptr7","bits":[17,12],"width":6,"desc":"dptr7"},{"domain":91,"name":"dbg_pstproc_dptr_rcd1_dptr6","bits":[11,6],"width":6,"desc":"dptr6"},{"domain":91,"name":"dbg_pstproc_dptr_rcd1_dptr5","bits":[5,0],"width":6,"desc":"dptr5"},{"domain":92,"name":"dbg_pstproc_dptr_rcd2_rsv","bits":[31,12],"width":20,"desc":"reserved"},{"domain":92,"name":"dbg_pstproc_dptr_rcd2_dptr11","bits":[11,6],"width":6,"desc":"dptr11"},{"domain":92,"name":"dbg_pstproc_dptr_rcd2_dptr10","bits":[5,0],"width":6,"desc":"dptr10"},{"domain":93,"name":"dbg_ctn_info_0","bits":[31,0],"width":32,"desc":"ctn info word 0"},{"domain":94,"name":"dbg_ctn_info_1","bits":[31,0],"width":32,"desc":"ctn info word 1"},{"domain":95,"name":"dbg_ctn_info_2","bits":[31,0],"width":32,"desc":"ctn info word 2"},{"domain":96,"name":"dbg_ctn_info_3","bits":[31,0],"width":32,"desc":"ctn info word 3"},{"domain":97,"name":"dbg_ctn_info_4","bits":[31,0],"width":32,"desc":"ctn info word 4"},{"domain":98,"name":"dbg_ctn_info_5","bits":[31,0],"width":32,"desc":"ctn info word 5"},{"domain":99,"name":"dbg_ctn_info_6","bits":[31,0],"width":32,"desc":"ctn info word 6"},{"domain":100,"name":"dbg_ctn_info_7","bits":[31,0],"width":32,"desc":"ctn info word 7"},{"domain":101,"name":"dbg_ctn_info_8","bits":[31,0],"width":32,"desc":"ctn info word 8"},{"domain":102,"name":"dbg_ctn_info_9","bits":[31,0],"width":32,"desc":"ctn info word 9"},{"domain":103,"name":"dbg_ctn_info_10","bits":[31,0],"width":32,"desc":"ctn info word 10"},{"domain":104,"name":"dbg_ctn_info_11","bits":[31,0],"width":32,"desc":"ctn info word 11"},{"domain":105,"name":"dbg_ctn_info_12","bits":[31,0],"width":32,"desc":"ctn info word 12"},{"domain":106,"name":"dbg_ctn_info_13","bits":[31,0],"width":32,"desc":"ctn info word 13"},{"domain":107,"name":"dbg_ctn_info_14","bits":[31,0],"width":32,"desc":"ctn info word 14"},{"domain":108,"name":"dbg_ctn_info_15","bits":[31,0],"width":32,"desc":"ctn info word 15"}]}}};
+  window.EPARSER_LAYOUTS = {"word_bits":32,"bit_order":"lsb0_in_word","traces":{"eparser_trace":{"title":"Eparser register trace","word_count":103,"fields":[{"domain":0,"name":"dbg_trace_sel_rsv","bits":[31,13],"width":19,"desc":"reserved"},{"domain":0,"name":"dbg_trace_sel_pph_plac","bits":[12,5],"width":8,"desc":"trace 在 pph 网段的位置：0: pph[0] ... 255: pph[255]"},{"domain":0,"name":"dbg_trace_sel_src","bits":[4,4],"width":1,"desc":"trace 标志来源：1'b0 来源于 pph，1'b1 来源于 port_cfg"},{"domain":1,"name":"dbg_trace_ctrl_psv_dword","bits":[3,2],"width":2,"desc":"输出给 PPU 的 PSV 抓取：0=抓最高位开始第 3 个 64B，1=第 2 个，2=第 1 个"},{"domain":1,"name":"dbg_trace_ctrl_hdr_dword","bits":[1,1],"width":1,"desc":"EPI 输入的 hdr 抓取：0=抓最高位开始第 2 个 64B，1=第 1 个"},{"domain":1,"name":"dbg_trace_ctrl_mode","bits":[0,0],"width":1,"desc":"trace trig 模式：1'b0 持续抓取带 trace 标记的报文，1'b1 只抓取第一个带 trace 标记的"},{"domain":2,"name":"dbg_trace_clr_rsv","bits":[31,1],"width":31,"desc":"reserved"},{"domain":2,"name":"dbg_trace_clr_clr","bits":[0,0],"width":1,"desc":"trace trig info clear"},{"domain":3,"name":"dbg_hdr_info[0]","bits":[31,0],"width":32,"desc":"EPI 输入的 hdr 信息"},{"domain":4,"name":"dbg_hdr_info[1]","bits":[31,0],"width":32,"desc":"EPI 输入的 hdr 信息"},{"domain":5,"name":"dbg_hdr_info[2]","bits":[31,0],"width":32,"desc":"EPI 输入的 hdr 信息"},{"domain":6,"name":"dbg_hdr_info[3]","bits":[31,0],"width":32,"desc":"EPI 输入的 hdr 信息"},{"domain":7,"name":"dbg_hdr_info[4]","bits":[31,0],"width":32,"desc":"EPI 输入的 hdr 信息"},{"domain":8,"name":"dbg_hdr_info[5]","bits":[31,0],"width":32,"desc":"EPI 输入的 hdr 信息"},{"domain":9,"name":"dbg_hdr_info[6]","bits":[31,0],"width":32,"desc":"EPI 输入的 hdr 信息"},{"domain":10,"name":"dbg_hdr_info[7]","bits":[31,0],"width":32,"desc":"EPI 输入的 hdr 信息"},{"domain":11,"name":"dbg_hdr_info[8]","bits":[31,0],"width":32,"desc":"EPI 输入的 hdr 信息"},{"domain":12,"name":"dbg_hdr_info[9]","bits":[31,0],"width":32,"desc":"EPI 输入的 hdr 信息"},{"domain":13,"name":"dbg_hdr_info[10]","bits":[31,0],"width":32,"desc":"EPI 输入的 hdr 信息"},{"domain":14,"name":"dbg_hdr_info[11]","bits":[31,0],"width":32,"desc":"EPI 输入的 hdr 信息"},{"domain":15,"name":"dbg_hdr_info[12]","bits":[31,0],"width":32,"desc":"EPI 输入的 hdr 信息"},{"domain":16,"name":"dbg_hdr_info[13]","bits":[31,0],"width":32,"desc":"EPI 输入的 hdr 信息"},{"domain":17,"name":"dbg_hdr_info[14]","bits":[31,0],"width":32,"desc":"EPI 输入的 hdr 信息"},{"domain":18,"name":"dbg_hdr_info[15]","bits":[31,0],"width":32,"desc":"EPI 输入的 hdr 信息"},{"domain":19,"name":"dbg_psv_info[0]","bits":[31,0],"width":32,"desc":"输出给 PPU 的 psv 信息"},{"domain":20,"name":"dbg_psv_info[1]","bits":[31,0],"width":32,"desc":"输出给 PPU 的 psv 信息"},{"domain":21,"name":"dbg_psv_info[2]","bits":[31,0],"width":32,"desc":"输出给 PPU 的 psv 信息"},{"domain":22,"name":"dbg_psv_info[3]","bits":[31,0],"width":32,"desc":"输出给 PPU 的 psv 信息"},{"domain":23,"name":"dbg_psv_info[4]","bits":[31,0],"width":32,"desc":"输出给 PPU 的 psv 信息"},{"domain":24,"name":"dbg_psv_info[5]","bits":[31,0],"width":32,"desc":"输出给 PPU 的 psv 信息"},{"domain":25,"name":"dbg_psv_info[6]","bits":[31,0],"width":32,"desc":"输出给 PPU 的 psv 信息"},{"domain":26,"name":"dbg_psv_info[7]","bits":[31,0],"width":32,"desc":"输出给 PPU 的 psv 信息"},{"domain":27,"name":"dbg_psv_info[8]","bits":[31,0],"width":32,"desc":"输出给 PPU 的 psv 信息"},{"domain":28,"name":"dbg_psv_info[9]","bits":[31,0],"width":32,"desc":"输出给 PPU 的 psv 信息"},{"domain":29,"name":"dbg_psv_info[10]","bits":[31,0],"width":32,"desc":"输出给 PPU 的 psv 信息"},{"domain":30,"name":"dbg_psv_info[11]","bits":[31,0],"width":32,"desc":"输出给 PPU 的 psv 信息"},{"domain":31,"name":"dbg_psv_info[12]","bits":[31,0],"width":32,"desc":"输出给 PPU 的 psv 信息"},{"domain":32,"name":"dbg_psv_info[13]","bits":[31,0],"width":32,"desc":"输出给 PPU 的 psv 信息"},{"domain":33,"name":"dbg_psv_info[14]","bits":[31,0],"width":32,"desc":"输出给 PPU 的 psv 信息"},{"domain":34,"name":"dbg_psv_info[15]","bits":[31,0],"width":32,"desc":"输出给 PPU 的 psv 信息"},{"domain":35,"name":"dbg_pph_info[0]","bits":[31,0],"width":32,"desc":"EPM 输入的 pph 信息"},{"domain":36,"name":"dbg_pph_info[1]","bits":[31,0],"width":32,"desc":"EPM 输入的 pph 信息"},{"domain":37,"name":"dbg_pph_info[2]","bits":[31,0],"width":32,"desc":"EPM 输入的 pph 信息"},{"domain":38,"name":"dbg_pph_info[3]","bits":[31,0],"width":32,"desc":"EPM 输入的 pph 信息"},{"domain":39,"name":"dbg_pph_info[4]","bits":[31,0],"width":32,"desc":"EPM 输入的 pph 信息"},{"domain":40,"name":"dbg_pph_info[5]","bits":[31,0],"width":32,"desc":"EPM 输入的 pph 信息"},{"domain":41,"name":"dbg_pph_info[6]","bits":[31,0],"width":32,"desc":"EPM 输入的 pph 信息"},{"domain":42,"name":"dbg_pph_info[7]","bits":[31,0],"width":32,"desc":"EPM 输入的 pph 信息"},{"domain":43,"name":"dbg_etmh_info[0]","bits":[31,0],"width":32,"desc":"EPM 输入的 etmh 信息"},{"domain":44,"name":"dbg_etmh_info[1]","bits":[31,0],"width":32,"desc":"EPM 输入的 etmh 信息"},{"domain":45,"name":"dbg_pedt_info[0]","bits":[31,0],"width":32,"desc":"输出给 PEDT 的信息"},{"domain":46,"name":"dbg_pedt_info[1]","bits":[31,0],"width":32,"desc":"输出给 PEDT 的信息"},{"domain":47,"name":"dbg_pedt_info[2]","bits":[31,0],"width":32,"desc":"输出给 PEDT 的信息"},{"domain":48,"name":"dbg_eof_out_info_rsv","bits":[31,13],"width":19,"desc":"reserved"},{"domain":48,"name":"dbg_eof_out_info_portid","bits":[12,8],"width":5,"desc":"输出的 portid"},{"domain":48,"name":"dbg_eof_out_info_pktid","bits":[7,0],"width":8,"desc":"输出的 pktid"},{"domain":49,"name":"dbg_mpl_req_info[0]","bits":[31,0],"width":32,"desc":"mpl req 信息"},{"domain":50,"name":"dbg_mpl_req_info[1]","bits":[31,0],"width":32,"desc":"mpl req 信息"},{"domain":51,"name":"dbg_mpl_req_info[2]","bits":[31,0],"width":32,"desc":"mpl req 信息"},{"domain":52,"name":"dbg_mpl_rsp_info[0]","bits":[31,0],"width":32,"desc":"MPL 返回的 data 记录"},{"domain":53,"name":"dbg_mpl_rsp_info[1]","bits":[31,0],"width":32,"desc":"MPL 返回的 data 记录"},{"domain":54,"name":"dbg_mpl_rsp_info[2]","bits":[31,0],"width":32,"desc":"MPL 返回的 data 记录"},{"domain":55,"name":"dbg_mpl_rsp_info[3]","bits":[31,0],"width":32,"desc":"MPL 返回的 data 记录"},{"domain":56,"name":"dbg_mpl_rsp_info[4]","bits":[31,0],"width":32,"desc":"MPL 返回的 data 记录"},{"domain":57,"name":"dbg_mpl_rsp_info[5]","bits":[31,0],"width":32,"desc":"MPL 返回的 data 记录"},{"domain":58,"name":"dbg_mpl_rsp_info[6]","bits":[31,0],"width":32,"desc":"MPL 返回的 data 记录"},{"domain":59,"name":"dbg_mpl_rsp_info[7]","bits":[31,0],"width":32,"desc":"MPL 返回的 data 记录"},{"domain":60,"name":"dbg_mpl_rsp_info[8]","bits":[31,0],"width":32,"desc":"MPL 返回的 data 记录"},{"domain":61,"name":"dbg_sfr_info_rsv","bits":[31,26],"width":6,"desc":"reserved"},{"domain":61,"name":"dbg_sfr_info_wb_prof","bits":[25,21],"width":5,"desc":"wb_prof"},{"domain":61,"name":"dbg_sfr_info_hit_idx","bits":[20,17],"width":4,"desc":"hit 索引，hit flag 为 1 时有效"},{"domain":61,"name":"dbg_sfr_info_hit_flag","bits":[16,16],"width":1,"desc":"hit 标志"},{"domain":61,"name":"dbg_sfr_info_match_8bit","bits":[15,8],"width":8,"desc":"与或之后进行匹配的 8bit"},{"domain":61,"name":"dbg_sfr_info_ori_8bit","bits":[7,0],"width":8,"desc":"从 etmh 和 pph 中提取的原始 8bit"},{"domain":62,"name":"dbg_rcd_zoneid_zoneid2","bits":[31,20],"width":12,"desc":"zoneid2"},{"domain":62,"name":"dbg_rcd_zoneid_zoneid1","bits":[19,8],"width":12,"desc":"zoneid1"},{"domain":62,"name":"dbg_rcd_zoneid_zoneid0","bits":[7,0],"width":8,"desc":"zoneid0"},{"domain":63,"name":"dbg_hfe_addr_rsv","bits":[31,30],"width":2,"desc":"reserved"},{"domain":63,"name":"dbg_hfe_addr_hfe2","bits":[23,16],"width":8,"desc":"hfe2_table addr"},{"domain":63,"name":"dbg_hfe_addr_hfe1","bits":[15,8],"width":8,"desc":"hfe1_table addr"},{"domain":63,"name":"dbg_hfe_addr_hfe0","bits":[7,0],"width":8,"desc":"hfe0_table addr"},{"domain":64,"name":"dbg_rcd0_hdrcal_rsv","bits":[31,30],"width":2,"desc":"reserved"},{"domain":64,"name":"dbg_rcd0_hdrcal_shdr4_ofs","bits":[29,24],"width":6,"desc":"sub hdr4 offset"},{"domain":64,"name":"dbg_rcd0_hdrcal_shdr3_ofs","bits":[23,18],"width":6,"desc":"sub hdr3 offset"},{"domain":64,"name":"dbg_rcd0_hdrcal_shdr2_ofs","bits":[17,12],"width":6,"desc":"sub hdr2 offset"},{"domain":64,"name":"dbg_rcd0_hdrcal_shdr1_ofs","bits":[11,6],"width":6,"desc":"sub hdr1 offset"},{"domain":64,"name":"dbg_rcd0_hdrcal_shdr0_ofs","bits":[5,0],"width":6,"desc":"sub hdr0 offset"},{"domain":65,"name":"dbg_rcd1_hdrcal_rsv","bits":[31,30],"width":2,"desc":"reserved"},{"domain":65,"name":"dbg_rcd1_hdrcal_shdr9_ofs","bits":[29,24],"width":6,"desc":"sub hdr9 offset"},{"domain":65,"name":"dbg_rcd1_hdrcal_shdr8_ofs","bits":[23,18],"width":6,"desc":"sub hdr8 offset"},{"domain":65,"name":"dbg_rcd1_hdrcal_shdr7_ofs","bits":[17,12],"width":6,"desc":"sub hdr7 offset"},{"domain":65,"name":"dbg_rcd1_hdrcal_shdr6_ofs","bits":[11,6],"width":6,"desc":"sub hdr6 offset"},{"domain":65,"name":"dbg_rcd1_hdrcal_shdr5_ofs","bits":[5,0],"width":6,"desc":"sub hdr5 offset"},{"domain":66,"name":"dbg_rcd2_hdrcal_rsv","bits":[31,12],"width":20,"desc":"reserved"},{"domain":66,"name":"dbg_rcd2_hdrcal_shdr11_ofs","bits":[11,6],"width":6,"desc":"sub hdr11 offset"},{"domain":66,"name":"dbg_rcd2_hdrcal_shdr10_ofs","bits":[5,0],"width":6,"desc":"sub hdr10 offset"},{"domain":67,"name":"dbg_ctn_info[0]","bits":[31,0],"width":32,"desc":"ctn 结果（OCR 另见 en/val 字段，归属待确认）"},{"domain":68,"name":"dbg_ctn_info[1]","bits":[31,0],"width":32,"desc":"ctn 结果（OCR 另见 en/val 字段，归属待确认）"},{"domain":69,"name":"dbg_ctn_info[2]","bits":[31,0],"width":32,"desc":"ctn 结果（OCR 另见 en/val 字段，归属待确认）"},{"domain":70,"name":"dbg_ctn_info[3]","bits":[31,0],"width":32,"desc":"ctn 结果（OCR 另见 en/val 字段，归属待确认）"},{"domain":71,"name":"dbg_ctn_info[4]","bits":[31,0],"width":32,"desc":"ctn 结果（OCR 另见 en/val 字段，归属待确认）"},{"domain":72,"name":"dbg_ctn_info[5]","bits":[31,0],"width":32,"desc":"ctn 结果（OCR 另见 en/val 字段，归属待确认）"},{"domain":73,"name":"dbg_ctn_info[6]","bits":[31,0],"width":32,"desc":"ctn 结果（OCR 另见 en/val 字段，归属待确认）"},{"domain":74,"name":"dbg_ctn_info[7]","bits":[31,0],"width":32,"desc":"ctn 结果（OCR 另见 en/val 字段，归属待确认）"},{"domain":75,"name":"dbg_ctn_info[8]","bits":[31,0],"width":32,"desc":"ctn 结果（OCR 另见 en/val 字段，归属待确认）"},{"domain":76,"name":"dbg_ctn_info[9]","bits":[31,0],"width":32,"desc":"ctn 结果（OCR 另见 en/val 字段，归属待确认）"},{"domain":77,"name":"dbg_ctn_info[10]","bits":[31,0],"width":32,"desc":"ctn 结果（OCR 另见 en/val 字段，归属待确认）"},{"domain":78,"name":"dbg_ctn_info[11]","bits":[31,0],"width":32,"desc":"ctn 结果（OCR 另见 en/val 字段，归属待确认）"},{"domain":79,"name":"dbg_ctn_info[12]","bits":[31,0],"width":32,"desc":"ctn 结果（OCR 另见 en/val 字段，归属待确认）"},{"domain":80,"name":"dbg_ctn_info[13]","bits":[31,0],"width":32,"desc":"ctn 结果（OCR 另见 en/val 字段，归属待确认）"},{"domain":81,"name":"dbg_ctn_info[14]","bits":[31,0],"width":32,"desc":"ctn 结果（OCR 另见 en/val 字段，归属待确认）"},{"domain":82,"name":"dbg_ctn_info[15]","bits":[31,0],"width":32,"desc":"ctn 结果（OCR 另见 en/val 字段，归属待确认）"},{"domain":83,"name":"dbg_fsm_sts_rsv","bits":[31,4],"width":28,"desc":"reserved"},{"domain":83,"name":"dbg_fsm_sts_fr_cur_state","bits":[3,2],"width":2,"desc":"fr 状态机当前状态"},{"domain":83,"name":"dbg_fsm_sts_fw_cur_state","bits":[1,0],"width":2,"desc":"fw 状态机当前状态"},{"domain":84,"name":"dbg_bp_his_rsv","bits":[31,3],"width":29,"desc":"reserved"},{"domain":84,"name":"dbg_bp_his_ppu2epars","bits":[2,2],"width":1,"desc":"ppu 输入的反压历史记录"},{"domain":84,"name":"dbg_bp_his_mpl2epars","bits":[1,1],"width":1,"desc":"mpl 输入的反压历史记录"},{"domain":84,"name":"dbg_bp_his_epars2epm","bits":[0,0],"width":1,"desc":"输出给 epm 的反压历史记录"},{"domain":85,"name":"dbg_bp_cur_clr","bits":[31,31],"width":1,"desc":"历史最长反压 cycle 数清除"},{"domain":85,"name":"dbg_bp_cur_rsv","bits":[30,24],"width":7,"desc":"reserved"},{"domain":85,"name":"dbg_bp_cur_ppu2epars","bits":[2,2],"width":1,"desc":"ppu 输入的反压实时状态"},{"domain":85,"name":"dbg_bp_cur_mpl2epars","bits":[1,1],"width":1,"desc":"mpl 输入的反压实时状态"},{"domain":85,"name":"dbg_bp_cur_epars2epm","bits":[0,0],"width":1,"desc":"输出给 epm 的反压实时状态"},{"domain":86,"name":"dbg_bp_max_cnt[0]_vid","bits":[31,31],"width":1,"desc":"反压平均时长统计周期写有效"},{"domain":86,"name":"dbg_bp_max_cnt[0]_rsv","bits":[30,24],"width":7,"desc":"reserved"},{"domain":86,"name":"dbg_bp_max_cnt[0]_val","bits":[23,0],"width":24,"desc":"历史最长反压 cycle 数"},{"domain":87,"name":"dbg_bp_max_cnt[1]_vid","bits":[31,31],"width":1,"desc":"反压平均时长统计周期写有效"},{"domain":87,"name":"dbg_bp_max_cnt[1]_rsv","bits":[30,24],"width":7,"desc":"reserved"},{"domain":87,"name":"dbg_bp_max_cnt[1]_val","bits":[23,0],"width":24,"desc":"历史最长反压 cycle 数"},{"domain":88,"name":"dbg_bp_max_cnt[2]_vid","bits":[31,31],"width":1,"desc":"反压平均时长统计周期写有效"},{"domain":88,"name":"dbg_bp_max_cnt[2]_rsv","bits":[30,24],"width":7,"desc":"reserved"},{"domain":88,"name":"dbg_bp_max_cnt[2]_val","bits":[23,0],"width":24,"desc":"历史最长反压 cycle 数"},{"domain":89,"name":"dbg_bp_avg_prd[0]_rsv","bits":[31,16],"width":16,"desc":"reserved"},{"domain":89,"name":"dbg_bp_avg_prd[0]_val","bits":[15,0],"width":16,"desc":"反压平均时长统计周期"},{"domain":90,"name":"dbg_bp_avg_prd[1]_rsv","bits":[31,16],"width":16,"desc":"reserved"},{"domain":90,"name":"dbg_bp_avg_prd[1]_val","bits":[15,0],"width":16,"desc":"反压平均时长统计周期"},{"domain":91,"name":"dbg_bp_avg_prd[2]_rsv","bits":[31,16],"width":16,"desc":"reserved"},{"domain":91,"name":"dbg_bp_avg_prd[2]_val","bits":[15,0],"width":16,"desc":"反压平均时长统计周期"},{"domain":92,"name":"dbg_bp_avg_cnt[0]_rsv","bits":[31,16],"width":16,"desc":"reserved"},{"domain":92,"name":"dbg_bp_avg_cnt[0]_val","bits":[15,0],"width":16,"desc":"反压平均时长统计周期内反压 cycle"},{"domain":93,"name":"dbg_bp_avg_cnt[1]_rsv","bits":[31,16],"width":16,"desc":"reserved"},{"domain":93,"name":"dbg_bp_avg_cnt[1]_val","bits":[15,0],"width":16,"desc":"反压平均时长统计周期内反压 cycle"},{"domain":94,"name":"dbg_bp_avg_cnt[2]_rsv","bits":[31,16],"width":16,"desc":"reserved"},{"domain":94,"name":"dbg_bp_avg_cnt[2]_val","bits":[15,0],"width":16,"desc":"反压平均时长统计周期内反压 cycle"},{"domain":95,"name":"dbg_bp_set_rsv","bits":[31,1],"width":31,"desc":"reserved"},{"domain":95,"name":"dbg_bp_set_epars2epm","bits":[0,0],"width":1,"desc":"强制拉起 epars2epm 反压"},{"domain":96,"name":"dbg_bp_ign_rsv","bits":[31,2],"width":30,"desc":"reserved"},{"domain":96,"name":"dbg_bp_ign_ppu2epars","bits":[1,1],"width":1,"desc":"强制忽略 ppu2epars 反压"},{"domain":96,"name":"dbg_bp_ign_mpl2epars","bits":[0,0],"width":1,"desc":"强制忽略 mpl2epars 反压"},{"domain":97,"name":"dbg_sfr_miss_cnt","bits":[31,0],"width":32,"desc":"sfr miss 计数"},{"domain":98,"name":"pfg_eco_0","bits":[31,0],"width":32,"desc":"eco 配置"},{"domain":99,"name":"pfg_eco_1","bits":[31,0],"width":32,"desc":"eco 配置"},{"domain":100,"name":"pfg_eco_2","bits":[31,0],"width":32,"desc":"eco 状态"},{"domain":101,"name":"pfg_eco_3","bits":[31,0],"width":32,"desc":"eco 状态"},{"domain":102,"name":"dbg_epm_info_rsv","bits":[31,6],"width":26,"desc":"reserved"},{"domain":102,"name":"dbg_epm_info_full","bits":[5,5],"width":1,"desc":"epm 输入的 full 信号，需要看 trace 标记"},{"domain":102,"name":"dbg_epm_info_egr_port","bits":[4,0],"width":5,"desc":"epm 输入的 portid，需要看 trace 标记"}]},"pedt_trace":{"title":"Pedt register trace","word_count":214,"fields":[{"domain":0,"name":"dbg_ctrl_rsv","bits":[31,5],"width":27,"desc":"reserved"},{"domain":0,"name":"dbg_ctrl_rc_en","bits":[4,4],"width":1,"desc":"读使能（0/1: rc 寄存器软...）"},{"domain":0,"name":"dbg_ctrl_trace_mode","bits":[3,2],"width":2,"desc":"trace 模式：0: trace 带 trace 标记...，1: ...，2: trace 第一个...，3: trace 最后一个..."},{"domain":0,"name":"dbg_ctrl_clr","bits":[1,1],"width":1,"desc":"debug 清零，作用：(1) fifo status (2) trace 记录"},{"domain":0,"name":"dbg_ctrl_en","bits":[0,0],"width":1,"desc":"debug 使能，作用：(1) fifo status (2) 模块对外 (3) trace 记录"},{"domain":1,"name":"dbg_mem_ecc_inj_err2","bits":[31,31],"width":1,"desc":"2bit ecc 注错"},{"domain":1,"name":"dbg_mem_ecc_inj_err1","bits":[30,30],"width":1,"desc":"1bit ecc 注错"},{"domain":1,"name":"dbg_mem_ecc_inj_rsv","bits":[29,8],"width":22,"desc":"reserved"},{"domain":2,"name":"dbg_mem_ecc_cnt_rsv","bits":[31,16],"width":16,"desc":"reserved"},{"domain":2,"name":"dbg_mem_ecc_cnt_err2","bits":[15,8],"width":8,"desc":"2bit ecc error count"},{"domain":2,"name":"dbg_mem_ecc_cnt_err1","bits":[7,0],"width":8,"desc":"1bit ecc error count"},{"domain":3,"name":"dbg_mem_ecc1err_info_rsv","bits":[31,24],"width":8,"desc":"reserved"},{"domain":3,"name":"dbg_mem_ecc1err_info_mem_id","bits":[23,16],"width":8,"desc":"1bit ecc error memory id"},{"domain":3,"name":"dbg_mem_ecc1err_info_addr","bits":[15,0],"width":16,"desc":"1bit ecc error memory addr"},{"domain":4,"name":"dbg_mem_ecc2err_info_rsv","bits":[31,24],"width":8,"desc":"reserved"},{"domain":4,"name":"dbg_mem_ecc2err_info_mem_id","bits":[23,16],"width":8,"desc":"2bit ecc error memory id"},{"domain":4,"name":"dbg_mem_ecc2err_info_addr","bits":[15,0],"width":16,"desc":"2bit ecc error memory addr"},{"domain":5,"name":"dbg_zone_info_pfifo_sts_underflow_cnt","bits":[27,24],"width":4,"desc":"underflow 统计"},{"domain":5,"name":"dbg_zone_info_pfifo_sts_overflow_cnt","bits":[23,20],"width":4,"desc":"overflow 统计"},{"domain":5,"name":"dbg_zone_info_pfifo_sts_level_max","bits":[19,12],"width":8,"desc":"水位最大值"},{"domain":5,"name":"dbg_zone_info_pfifo_sts_rsv","bits":[11,11],"width":1,"desc":"reserved"},{"domain":5,"name":"dbg_zone_info_pfifo_sts_afull","bits":[10,10],"width":1,"desc":"将满"},{"domain":5,"name":"dbg_zone_info_pfifo_sts_empty","bits":[9,9],"width":1,"desc":"空标志"},{"domain":5,"name":"dbg_zone_info_pfifo_sts_full","bits":[8,8],"width":1,"desc":"满标志"},{"domain":5,"name":"dbg_zone_info_pfifo_sts_level","bits":[7,0],"width":8,"desc":"水位"},{"domain":6,"name":"dbg_frm_hdr_fifo_sts_rsv","bits":[31,28],"width":4,"desc":"reserved"},{"domain":6,"name":"dbg_frm_hdr_fifo_sts_underflow_cnt","bits":[27,24],"width":4,"desc":"underflow 统计"},{"domain":6,"name":"dbg_frm_hdr_fifo_sts_overflow_cnt","bits":[23,20],"width":4,"desc":"overflow 统计"},{"domain":6,"name":"dbg_frm_hdr_fifo_sts_level_max","bits":[19,12],"width":8,"desc":"水位最大值"},{"domain":6,"name":"dbg_frm_hdr_fifo_sts_rsv","bits":[11,11],"width":1,"desc":"reserved"},{"domain":6,"name":"dbg_frm_hdr_fifo_sts_afull","bits":[10,10],"width":1,"desc":"将满"},{"domain":6,"name":"dbg_frm_hdr_fifo_sts_empty","bits":[9,9],"width":1,"desc":"空标志"},{"domain":6,"name":"dbg_frm_hdr_fifo_sts_full","bits":[8,8],"width":1,"desc":"满标志"},{"domain":6,"name":"dbg_frm_hdr_fifo_sts_level","bits":[7,0],"width":8,"desc":"水位"},{"domain":7,"name":"dbg_out_fifo_sts_rsv","bits":[31,24],"width":8,"desc":"reserved"},{"domain":7,"name":"dbg_out_fifo_sts_overflow_cnt","bits":[23,20],"width":4,"desc":"overflow 统计"},{"domain":7,"name":"dbg_out_fifo_sts_rsv","bits":[19,18],"width":2,"desc":"reserved"},{"domain":7,"name":"dbg_out_fifo_sts_level_max","bits":[17,12],"width":6,"desc":"水位最大值"},{"domain":7,"name":"dbg_out_fifo_sts_rsv","bits":[11,10],"width":2,"desc":"reserved"},{"domain":7,"name":"dbg_out_fifo_sts_empty","bits":[9,9],"width":1,"desc":"空标志"},{"domain":7,"name":"dbg_out_fifo_sts_full","bits":[8,8],"width":1,"desc":"满标志"},{"domain":7,"name":"dbg_out_fifo_sts_level","bits":[7,6],"width":2,"desc":"水位"},{"domain":7,"name":"dbg_out_fifo_sts_rsv","bits":[5,0],"width":6,"desc":"reserved（OCR 显示 sts/ro-wo，待确认）"},{"domain":8,"name":"dbg_fw_cmd_fifo_sts_rsv","bits":[31,24],"width":8,"desc":"reserved"},{"domain":8,"name":"dbg_fw_cmd_fifo_sts_overflow_cnt","bits":[23,20],"width":4,"desc":"overflow 统计"},{"domain":8,"name":"dbg_fw_cmd_fifo_sts_rsv","bits":[19,18],"width":2,"desc":"reserved"},{"domain":8,"name":"dbg_fw_cmd_fifo_sts_level_max","bits":[17,12],"width":6,"desc":"水位最大值"},{"domain":8,"name":"dbg_fw_cmd_fifo_sts_rsv","bits":[11,10],"width":2,"desc":"reserved"},{"domain":8,"name":"dbg_fw_cmd_fifo_sts_empty","bits":[9,9],"width":1,"desc":"空标志"},{"domain":8,"name":"dbg_fw_cmd_fifo_sts_full","bits":[8,8],"width":1,"desc":"满标志"},{"domain":8,"name":"dbg_fw_cmd_fifo_sts_rsv","bits":[7,6],"width":2,"desc":"reserved"},{"domain":8,"name":"dbg_fw_cmd_fifo_sts_level","bits":[5,0],"width":6,"desc":"水位"},{"domain":9,"name":"dbg_ppu2pedt_cnt","bits":[31,0],"width":32,"desc":"计满翻转"},{"domain":10,"name":"dbg_eparser2pedt_cnt","bits":[31,0],"width":32,"desc":"计满翻转"},{"domain":11,"name":"dbg_pedt2copp_cnt","bits":[31,0],"width":32,"desc":"计满翻转"},{"domain":12,"name":"dbg_copp2pedt_cnt","bits":[31,0],"width":32,"desc":"计满翻转"},{"domain":13,"name":"dbg_pedt2meter_cnt","bits":[31,0],"width":32,"desc":"计满翻转"},{"domain":14,"name":"dbg_meter2pedt_cnt","bits":[31,0],"width":32,"desc":"计满翻转"},{"domain":15,"name":"dbg_pedt2sflow_cnt","bits":[31,0],"width":32,"desc":"计满翻转"},{"domain":16,"name":"dbg_sflow2pedt_cnt","bits":[31,0],"width":32,"desc":"计满翻转"},{"domain":17,"name":"dbg_pedt2cntpool_cnt_rsv","bits":[31,24],"width":8,"desc":"reserved"},{"domain":17,"name":"dbg_pedt2cntpool_cnt_val","bits":[23,0],"width":24,"desc":"计满翻转"},{"domain":18,"name":"dbg_pedt2epm_cnt_lo","bits":[31,0],"width":32,"desc":"计满翻转"},{"domain":19,"name":"dbg_pedt2epm_cnt_hi","bits":[31,0],"width":32,"desc":"计满翻转"},{"domain":20,"name":"trace_zone_rw_idx_rsv","bits":[31,24],"width":8,"desc":"reserved"},{"domain":20,"name":"trace_zone_rw_idx_z2","bits":[23,16],"width":8,"desc":"zone2 索引"},{"domain":20,"name":"trace_zone_rw_idx_z1","bits":[15,8],"width":8,"desc":"zone1 索引"},{"domain":20,"name":"trace_zone_rw_idx_z0","bits":[7,0],"width":8,"desc":"zone0 索引"},{"domain":21,"name":"trace_zone_del_idx_rsv","bits":[31,24],"width":8,"desc":"reserved"},{"domain":21,"name":"trace_zone_del_idx_z2","bits":[23,16],"width":8,"desc":"zone2 索引"},{"domain":21,"name":"trace_zone_del_idx_z1","bits":[15,8],"width":8,"desc":"zone1 索引"},{"domain":21,"name":"trace_zone_del_idx_z0","bits":[7,0],"width":8,"desc":"zone0 索引"},{"domain":22,"name":"trace_zone_ins_idx_rsv","bits":[31,24],"width":8,"desc":"reserved"},{"domain":22,"name":"trace_zone_ins_idx_z2","bits":[23,16],"width":8,"desc":"zone2 索引"},{"domain":22,"name":"trace_zone_ins_idx_z1","bits":[15,8],"width":8,"desc":"zone1 索引"},{"domain":22,"name":"trace_zone_ins_idx_z0","bits":[7,0],"width":8,"desc":"zone0 索引"},{"domain":23,"name":"trace_rw_engine_prof_idx_e3","bits":[31,24],"width":8,"desc":"engine3 profile 索引"},{"domain":23,"name":"trace_rw_engine_prof_idx_e2","bits":[23,16],"width":8,"desc":"engine2 profile 索引"},{"domain":23,"name":"trace_rw_engine_prof_idx_e1","bits":[15,8],"width":8,"desc":"engine1 profile 索引"},{"domain":23,"name":"trace_rw_engine_prof_idx_e0","bits":[7,0],"width":8,"desc":"engine0 profile 索引"},{"domain":24,"name":"trace_ins_engine_prof_idx_e3","bits":[31,24],"width":8,"desc":"engine3 profile 索引"},{"domain":24,"name":"trace_ins_engine_prof_idx_e2","bits":[23,16],"width":8,"desc":"engine2 profile 索引"},{"domain":24,"name":"trace_ins_engine_prof_idx_e1","bits":[15,8],"width":8,"desc":"engine1 profile 索引"},{"domain":24,"name":"trace_ins_engine_prof_idx_e0","bits":[7,0],"width":8,"desc":"engine0 profile 索引"},{"domain":25,"name":"trace_csm_engine_prof_idx_rsv","bits":[31,16],"width":16,"desc":"reserved"},{"domain":25,"name":"trace_csm_engine_prof_idx_e1","bits":[15,8],"width":8,"desc":"engine1 profile 索引"},{"domain":25,"name":"trace_csm_engine_prof_idx_e0","bits":[7,0],"width":8,"desc":"engine0 profile 索引"},{"domain":26,"name":"trace_csm_hdr_prof_idx_rsv","bits":[31,24],"width":8,"desc":"reserved"},{"domain":26,"name":"trace_csm_hdr_prof_idx_h2","bits":[23,16],"width":8,"desc":"hdr2 profile 索引"},{"domain":26,"name":"trace_csm_hdr_prof_idx_h1","bits":[15,8],"width":8,"desc":"hdr1 profile 索引"},{"domain":26,"name":"trace_csm_hdr_prof_idx_h0","bits":[7,0],"width":8,"desc":"hdr0 profile 索引"},{"domain":27,"name":"trace_cmd_tcam_u16_key_rsv","bits":[31,16],"width":16,"desc":"reserved"},{"domain":27,"name":"trace_cmd_tcam_u16_key_val","bits":[15,0],"width":16,"desc":"tcam u16 key"},{"domain":28,"name":"trace_cmd_tcam_u8_key_rsv","bits":[31,8],"width":24,"desc":"reserved"},{"domain":28,"name":"trace_cmd_tcam_u8_key_val","bits":[7,0],"width":8,"desc":"tcam u8 key"},{"domain":29,"name":"trace_cmd_tcam_u4_key","bits":[31,0],"width":32,"desc":"tcam u4 key"},{"domain":30,"name":"trace_fp_bus_data[0]","bits":[31,0],"width":32,"desc":"fp bus 数据"},{"domain":31,"name":"trace_fp_bus_data[1]","bits":[31,0],"width":32,"desc":"fp bus 数据"},{"domain":32,"name":"trace_fp_bus_data[2]","bits":[31,0],"width":32,"desc":"fp bus 数据"},{"domain":33,"name":"trace_fp_bus_data[3]","bits":[31,0],"width":32,"desc":"fp bus 数据"},{"domain":34,"name":"trace_fp_bus_data[4]","bits":[31,0],"width":32,"desc":"fp bus 数据"},{"domain":35,"name":"trace_fp_bus_data[5]","bits":[31,0],"width":32,"desc":"fp bus 数据"},{"domain":36,"name":"trace_fp_bus_data[6]","bits":[31,0],"width":32,"desc":"fp bus 数据"},{"domain":37,"name":"trace_fp_bus_data[7]","bits":[31,0],"width":32,"desc":"fp bus 数据"},{"domain":38,"name":"trace_cls_key","bits":[7,0],"width":8,"desc":"cls key"},{"domain":39,"name":"trace_hdr_igr_ofs[0]","bits":[31,0],"width":32,"desc":"入向 hdr offset"},{"domain":40,"name":"trace_hdr_igr_ofs[1]","bits":[31,0],"width":32,"desc":"入向 hdr offset"},{"domain":41,"name":"trace_hdr_igr_ofs[2]","bits":[31,0],"width":32,"desc":"入向 hdr offset"},{"domain":42,"name":"trace_hdr_igr_ofs[3]","bits":[31,0],"width":32,"desc":"入向 hdr offset"},{"domain":43,"name":"trace_hdr_igr_ofs[4]","bits":[31,0],"width":32,"desc":"入向 hdr offset"},{"domain":44,"name":"trace_hdr_igr_ofs[5]","bits":[31,0],"width":32,"desc":"入向 hdr offset"},{"domain":45,"name":"trace_hdr_igr_ofs[6]","bits":[31,0],"width":32,"desc":"入向 hdr offset"},{"domain":46,"name":"trace_hdr_igr_ofs[7]","bits":[31,0],"width":32,"desc":"入向 hdr offset"},{"domain":47,"name":"trace_hdr_egr_ofs[0]","bits":[31,0],"width":32,"desc":"出向 hdr offset"},{"domain":48,"name":"trace_hdr_egr_ofs[1]","bits":[31,0],"width":32,"desc":"出向 hdr offset"},{"domain":49,"name":"trace_hdr_egr_ofs[2]","bits":[31,0],"width":32,"desc":"出向 hdr offset"},{"domain":50,"name":"trace_hdr_egr_ofs[3]","bits":[31,0],"width":32,"desc":"出向 hdr offset"},{"domain":51,"name":"trace_hdr_egr_ofs[4]","bits":[31,0],"width":32,"desc":"出向 hdr offset"},{"domain":52,"name":"trace_hdr_egr_ofs[5]","bits":[31,0],"width":32,"desc":"出向 hdr offset"},{"domain":53,"name":"trace_hdr_egr_ofs[6]","bits":[31,0],"width":32,"desc":"出向 hdr offset"},{"domain":54,"name":"trace_hdr_egr_ofs[7]","bits":[31,0],"width":32,"desc":"出向 hdr offset"},{"domain":55,"name":"trace_rw_cmd[0]_vld","bits":[31,31],"width":1,"desc":"有效"},{"domain":55,"name":"trace_rw_cmd[0]_rsv","bits":[30,16],"width":15,"desc":"reserved"},{"domain":55,"name":"trace_rw_cmd[0]_ofs","bits":[15,8],"width":8,"desc":"offset"},{"domain":55,"name":"trace_rw_cmd[0]_rsv","bits":[7,6],"width":2,"desc":"reserved"},{"domain":55,"name":"trace_rw_cmd[0]_len","bits":[5,0],"width":6,"desc":"长度"},{"domain":56,"name":"trace_rw_cmd[1]_vld","bits":[31,31],"width":1,"desc":"有效"},{"domain":56,"name":"trace_rw_cmd[1]_rsv","bits":[30,16],"width":15,"desc":"reserved"},{"domain":56,"name":"trace_rw_cmd[1]_ofs","bits":[15,8],"width":8,"desc":"offset"},{"domain":56,"name":"trace_rw_cmd[1]_rsv","bits":[7,6],"width":2,"desc":"reserved"},{"domain":56,"name":"trace_rw_cmd[1]_len","bits":[5,0],"width":6,"desc":"长度"},{"domain":57,"name":"trace_rw_cmd[2]_vld","bits":[31,31],"width":1,"desc":"有效"},{"domain":57,"name":"trace_rw_cmd[2]_rsv","bits":[30,16],"width":15,"desc":"reserved"},{"domain":57,"name":"trace_rw_cmd[2]_ofs","bits":[15,8],"width":8,"desc":"offset"},{"domain":57,"name":"trace_rw_cmd[2]_rsv","bits":[7,6],"width":2,"desc":"reserved"},{"domain":57,"name":"trace_rw_cmd[2]_len","bits":[5,0],"width":6,"desc":"长度"},{"domain":58,"name":"trace_rw_cmd[3]_vld","bits":[31,31],"width":1,"desc":"有效"},{"domain":58,"name":"trace_rw_cmd[3]_rsv","bits":[30,16],"width":15,"desc":"reserved"},{"domain":58,"name":"trace_rw_cmd[3]_ofs","bits":[15,8],"width":8,"desc":"offset"},{"domain":58,"name":"trace_rw_cmd[3]_rsv","bits":[7,6],"width":2,"desc":"reserved"},{"domain":58,"name":"trace_rw_cmd[3]_len","bits":[5,0],"width":6,"desc":"长度"},{"domain":59,"name":"trace_rw_bitmap[0]","bits":[15,0],"width":16,"desc":"bitmap（每 bit 代表 2 字节）"},{"domain":60,"name":"trace_rw_bitmap[1]","bits":[15,0],"width":16,"desc":"bitmap（每 bit 代表 2 字节）"},{"domain":61,"name":"trace_rw_bitmap[2]","bits":[15,0],"width":16,"desc":"bitmap（每 bit 代表 2 字节）"},{"domain":62,"name":"trace_rw_bitmap[3]","bits":[15,0],"width":16,"desc":"bitmap（每 bit 代表 2 字节）"},{"domain":63,"name":"trace_rw0_data[0]","bits":[31,0],"width":32,"desc":"rw0 数据"},{"domain":64,"name":"trace_rw0_data[1]","bits":[31,0],"width":32,"desc":"rw0 数据"},{"domain":65,"name":"trace_rw0_data[2]","bits":[31,0],"width":32,"desc":"rw0 数据"},{"domain":66,"name":"trace_rw0_data[3]","bits":[31,0],"width":32,"desc":"rw0 数据"},{"domain":67,"name":"trace_rw1_data[0]","bits":[31,0],"width":32,"desc":"rw1 数据"},{"domain":68,"name":"trace_rw1_data[1]","bits":[31,0],"width":32,"desc":"rw1 数据"},{"domain":69,"name":"trace_rw1_data[2]","bits":[31,0],"width":32,"desc":"rw1 数据"},{"domain":70,"name":"trace_rw1_data[3]","bits":[31,0],"width":32,"desc":"rw1 数据"},{"domain":71,"name":"trace_rw2_data[0]","bits":[31,0],"width":32,"desc":"rw2 数据"},{"domain":72,"name":"trace_rw2_data[1]","bits":[31,0],"width":32,"desc":"rw2 数据"},{"domain":73,"name":"trace_rw2_data[2]","bits":[31,0],"width":32,"desc":"rw2 数据"},{"domain":74,"name":"trace_rw2_data[3]","bits":[31,0],"width":32,"desc":"rw2 数据"},{"domain":75,"name":"trace_rw3_data[0]","bits":[31,0],"width":32,"desc":"rw3 数据"},{"domain":76,"name":"trace_rw3_data[1]","bits":[31,0],"width":32,"desc":"rw3 数据"},{"domain":77,"name":"trace_rw3_data[2]","bits":[31,0],"width":32,"desc":"rw3 数据"},{"domain":78,"name":"trace_rw3_data[3]","bits":[31,0],"width":32,"desc":"rw3 数据"},{"domain":79,"name":"trace_del_cmd[0]_vld","bits":[31,31],"width":1,"desc":"有效"},{"domain":79,"name":"trace_del_cmd[0]_rsv","bits":[30,15],"width":16,"desc":"reserved"},{"domain":79,"name":"trace_del_cmd[0]_ofs","bits":[14,8],"width":7,"desc":"offset"},{"domain":79,"name":"trace_del_cmd[0]_rsv","bits":[7,7],"width":1,"desc":"reserved"},{"domain":79,"name":"trace_del_cmd[0]_len","bits":[6,0],"width":7,"desc":"长度"},{"domain":80,"name":"trace_del_cmd[1]_vld","bits":[31,31],"width":1,"desc":"有效"},{"domain":80,"name":"trace_del_cmd[1]_rsv","bits":[30,15],"width":16,"desc":"reserved"},{"domain":80,"name":"trace_del_cmd[1]_ofs","bits":[14,8],"width":7,"desc":"offset"},{"domain":80,"name":"trace_del_cmd[1]_rsv","bits":[7,7],"width":1,"desc":"reserved"},{"domain":80,"name":"trace_del_cmd[1]_len","bits":[6,0],"width":7,"desc":"长度"},{"domain":81,"name":"trace_del_cmd[2]_vld","bits":[31,31],"width":1,"desc":"有效"},{"domain":81,"name":"trace_del_cmd[2]_rsv","bits":[30,15],"width":16,"desc":"reserved"},{"domain":81,"name":"trace_del_cmd[2]_ofs","bits":[14,8],"width":7,"desc":"offset"},{"domain":81,"name":"trace_del_cmd[2]_rsv","bits":[7,7],"width":1,"desc":"reserved"},{"domain":81,"name":"trace_del_cmd[2]_len","bits":[6,0],"width":7,"desc":"长度"},{"domain":82,"name":"trace_del_cmd[3]_vld","bits":[31,31],"width":1,"desc":"有效"},{"domain":82,"name":"trace_del_cmd[3]_rsv","bits":[30,15],"width":16,"desc":"reserved"},{"domain":82,"name":"trace_del_cmd[3]_ofs","bits":[14,8],"width":7,"desc":"offset"},{"domain":82,"name":"trace_del_cmd[3]_rsv","bits":[7,7],"width":1,"desc":"reserved"},{"domain":82,"name":"trace_del_cmd[3]_len","bits":[6,0],"width":7,"desc":"长度"},{"domain":83,"name":"trace_del_cmd[4]_vld","bits":[31,31],"width":1,"desc":"有效"},{"domain":83,"name":"trace_del_cmd[4]_rsv","bits":[30,15],"width":16,"desc":"reserved"},{"domain":83,"name":"trace_del_cmd[4]_ofs","bits":[14,8],"width":7,"desc":"offset"},{"domain":83,"name":"trace_del_cmd[4]_rsv","bits":[7,7],"width":1,"desc":"reserved"},{"domain":83,"name":"trace_del_cmd[4]_len","bits":[6,0],"width":7,"desc":"长度"},{"domain":84,"name":"trace_del_cmd[5]_vld","bits":[31,31],"width":1,"desc":"有效"},{"domain":84,"name":"trace_del_cmd[5]_rsv","bits":[30,15],"width":16,"desc":"reserved"},{"domain":84,"name":"trace_del_cmd[5]_ofs","bits":[14,8],"width":7,"desc":"offset"},{"domain":84,"name":"trace_del_cmd[5]_rsv","bits":[7,7],"width":1,"desc":"reserved"},{"domain":84,"name":"trace_del_cmd[5]_len","bits":[6,0],"width":7,"desc":"长度"},{"domain":85,"name":"trace_ins_cmd[0]_vld","bits":[31,31],"width":1,"desc":"有效"},{"domain":85,"name":"trace_ins_cmd[0]_rsv","bits":[30,21],"width":10,"desc":"reserved"},{"domain":85,"name":"trace_ins_cmd[0]_hdr_id","bits":[20,16],"width":5,"desc":"hdr id"},{"domain":85,"name":"trace_ins_cmd[0]_rsv","bits":[15,15],"width":1,"desc":"reserved"},{"domain":85,"name":"trace_ins_cmd[0]_ofs","bits":[14,8],"width":7,"desc":"offset"},{"domain":85,"name":"trace_ins_cmd[0]_rsv","bits":[7,5],"width":3,"desc":"reserved"},{"domain":85,"name":"trace_ins_cmd[0]_len","bits":[4,0],"width":5,"desc":"长度"},{"domain":86,"name":"trace_ins_cmd[1]_vld","bits":[31,31],"width":1,"desc":"有效"},{"domain":86,"name":"trace_ins_cmd[1]_rsv","bits":[30,21],"width":10,"desc":"reserved"},{"domain":86,"name":"trace_ins_cmd[1]_hdr_id","bits":[20,16],"width":5,"desc":"hdr id"},{"domain":86,"name":"trace_ins_cmd[1]_rsv","bits":[15,15],"width":1,"desc":"reserved"},{"domain":86,"name":"trace_ins_cmd[1]_ofs","bits":[14,8],"width":7,"desc":"offset"},{"domain":86,"name":"trace_ins_cmd[1]_rsv","bits":[7,5],"width":3,"desc":"reserved"},{"domain":86,"name":"trace_ins_cmd[1]_len","bits":[4,0],"width":5,"desc":"长度"},{"domain":87,"name":"trace_ins_cmd[2]_vld","bits":[31,31],"width":1,"desc":"有效"},{"domain":87,"name":"trace_ins_cmd[2]_rsv","bits":[30,21],"width":10,"desc":"reserved"},{"domain":87,"name":"trace_ins_cmd[2]_hdr_id","bits":[20,16],"width":5,"desc":"hdr id"},{"domain":87,"name":"trace_ins_cmd[2]_rsv","bits":[15,15],"width":1,"desc":"reserved"},{"domain":87,"name":"trace_ins_cmd[2]_ofs","bits":[14,8],"width":7,"desc":"offset"},{"domain":87,"name":"trace_ins_cmd[2]_rsv","bits":[7,5],"width":3,"desc":"reserved"},{"domain":87,"name":"trace_ins_cmd[2]_len","bits":[4,0],"width":5,"desc":"长度"},{"domain":88,"name":"trace_ins_cmd[3]_vld","bits":[31,31],"width":1,"desc":"有效"},{"domain":88,"name":"trace_ins_cmd[3]_rsv","bits":[30,21],"width":10,"desc":"reserved"},{"domain":88,"name":"trace_ins_cmd[3]_hdr_id","bits":[20,16],"width":5,"desc":"hdr id"},{"domain":88,"name":"trace_ins_cmd[3]_rsv","bits":[15,15],"width":1,"desc":"reserved"},{"domain":88,"name":"trace_ins_cmd[3]_ofs","bits":[14,8],"width":7,"desc":"offset"},{"domain":88,"name":"trace_ins_cmd[3]_rsv","bits":[7,5],"width":3,"desc":"reserved"},{"domain":88,"name":"trace_ins_cmd[3]_len","bits":[4,0],"width":5,"desc":"长度"},{"domain":89,"name":"trace_ins_bitmap[0]","bits":[15,0],"width":16,"desc":"bitmap（每 bit 代表 2 字节）"},{"domain":90,"name":"trace_ins_bitmap[1]","bits":[15,0],"width":16,"desc":"bitmap（每 bit 代表 2 字节）"},{"domain":91,"name":"trace_ins_bitmap[2]","bits":[15,0],"width":16,"desc":"bitmap（每 bit 代表 2 字节）"},{"domain":92,"name":"trace_ins_bitmap[3]","bits":[15,0],"width":16,"desc":"bitmap（每 bit 代表 2 字节）"},{"domain":93,"name":"trace_ins0_data[0]","bits":[31,0],"width":32,"desc":"ins0 数据"},{"domain":94,"name":"trace_ins0_data[1]","bits":[31,0],"width":32,"desc":"ins0 数据"},{"domain":95,"name":"trace_ins0_data[2]","bits":[31,0],"width":32,"desc":"ins0 数据"},{"domain":96,"name":"trace_ins0_data[3]","bits":[31,0],"width":32,"desc":"ins0 数据"},{"domain":97,"name":"trace_ins1_data[0]","bits":[31,0],"width":32,"desc":"ins1 数据"},{"domain":98,"name":"trace_ins1_data[1]","bits":[31,0],"width":32,"desc":"ins1 数据"},{"domain":99,"name":"trace_ins1_data[2]","bits":[31,0],"width":32,"desc":"ins1 数据"},{"domain":100,"name":"trace_ins1_data[3]","bits":[31,0],"width":32,"desc":"ins1 数据"},{"domain":101,"name":"trace_ins2_data[0]","bits":[31,0],"width":32,"desc":"ins2 数据"},{"domain":102,"name":"trace_ins2_data[1]","bits":[31,0],"width":32,"desc":"ins2 数据"},{"domain":103,"name":"trace_ins2_data[2]","bits":[31,0],"width":32,"desc":"ins2 数据"},{"domain":104,"name":"trace_ins2_data[3]","bits":[31,0],"width":32,"desc":"ins2 数据"},{"domain":105,"name":"trace_ins2_data[4]","bits":[31,0],"width":32,"desc":"ins2 数据"},{"domain":106,"name":"trace_ins2_data[5]","bits":[31,0],"width":32,"desc":"ins2 数据"},{"domain":107,"name":"trace_ins2_data[6]","bits":[31,0],"width":32,"desc":"ins2 数据"},{"domain":108,"name":"trace_ins2_data[7]","bits":[31,0],"width":32,"desc":"ins2 数据"},{"domain":109,"name":"trace_ins3_data[0]","bits":[31,0],"width":32,"desc":"ins3 数据"},{"domain":110,"name":"trace_ins3_data[1]","bits":[31,0],"width":32,"desc":"ins3 数据"},{"domain":111,"name":"trace_ins3_data[2]","bits":[31,0],"width":32,"desc":"ins3 数据"},{"domain":112,"name":"trace_ins3_data[3]","bits":[31,0],"width":32,"desc":"ins3 数据"},{"domain":113,"name":"trace_ins3_data[4]","bits":[31,0],"width":32,"desc":"ins3 数据"},{"domain":114,"name":"trace_ins3_data[5]","bits":[31,0],"width":32,"desc":"ins3 数据"},{"domain":115,"name":"trace_ins3_data[6]","bits":[31,0],"width":32,"desc":"ins3 数据"},{"domain":116,"name":"trace_ins3_data[7]","bits":[31,0],"width":32,"desc":"ins3 数据"},{"domain":117,"name":"trace_uplen_cmd[0]_vid","bits":[31,31],"width":1,"desc":"有效"},{"domain":117,"name":"trace_uplen_cmd[0]_rsv","bits":[30,17],"width":14,"desc":"reserved"},{"domain":117,"name":"trace_uplen_cmd[0]_mode","bits":[16,16],"width":1,"desc":"模式"},{"domain":117,"name":"trace_uplen_cmd[0]_rsv","bits":[15,15],"width":1,"desc":"reserved"},{"domain":117,"name":"trace_uplen_cmd[0]_igr_ofs","bits":[14,8],"width":7,"desc":"入向 offset"},{"domain":117,"name":"trace_uplen_cmd[0]_rsv","bits":[7,0],"width":8,"desc":"reserved"},{"domain":118,"name":"trace_uplen_cmd[1]_vid","bits":[31,31],"width":1,"desc":"有效"},{"domain":118,"name":"trace_uplen_cmd[1]_rsv","bits":[30,17],"width":14,"desc":"reserved"},{"domain":118,"name":"trace_uplen_cmd[1]_mode","bits":[16,16],"width":1,"desc":"模式"},{"domain":118,"name":"trace_uplen_cmd[1]_rsv","bits":[15,15],"width":1,"desc":"reserved"},{"domain":118,"name":"trace_uplen_cmd[1]_igr_ofs","bits":[14,8],"width":7,"desc":"入向 offset"},{"domain":118,"name":"trace_uplen_cmd[1]_rsv","bits":[7,0],"width":8,"desc":"reserved"},{"domain":119,"name":"trace_uplen_cmd[2]_vid","bits":[31,31],"width":1,"desc":"有效"},{"domain":119,"name":"trace_uplen_cmd[2]_rsv","bits":[30,17],"width":14,"desc":"reserved"},{"domain":119,"name":"trace_uplen_cmd[2]_mode","bits":[16,16],"width":1,"desc":"模式"},{"domain":119,"name":"trace_uplen_cmd[2]_rsv","bits":[15,15],"width":1,"desc":"reserved"},{"domain":119,"name":"trace_uplen_cmd[2]_igr_ofs","bits":[14,8],"width":7,"desc":"入向 offset"},{"domain":119,"name":"trace_uplen_cmd[2]_rsv","bits":[7,0],"width":8,"desc":"reserved"},{"domain":120,"name":"trace_uplen_cmd[3]_vid","bits":[31,31],"width":1,"desc":"有效"},{"domain":120,"name":"trace_uplen_cmd[3]_rsv","bits":[30,17],"width":14,"desc":"reserved"},{"domain":120,"name":"trace_uplen_cmd[3]_mode","bits":[16,16],"width":1,"desc":"模式"},{"domain":120,"name":"trace_uplen_cmd[3]_rsv","bits":[15,15],"width":1,"desc":"reserved"},{"domain":120,"name":"trace_uplen_cmd[3]_igr_ofs","bits":[14,8],"width":7,"desc":"入向 offset"},{"domain":120,"name":"trace_uplen_cmd[3]_rsv","bits":[7,0],"width":8,"desc":"reserved"},{"domain":121,"name":"trace_uplen_new_len[0]_rsv","bits":[31,15],"width":17,"desc":"reserved（推断，待确认）"},{"domain":121,"name":"trace_uplen_new_len[0]_igr_ofs","bits":[14,8],"width":7,"desc":"入向 offset"},{"domain":121,"name":"trace_uplen_new_len[0]_rsv","bits":[7,7],"width":1,"desc":"reserved"},{"domain":121,"name":"trace_uplen_new_len[0]_egr_ofs","bits":[6,0],"width":7,"desc":"出向 offset"},{"domain":122,"name":"trace_uplen_new_len[1]_rsv","bits":[31,15],"width":17,"desc":"reserved（推断，待确认）"},{"domain":122,"name":"trace_uplen_new_len[1]_igr_ofs","bits":[14,8],"width":7,"desc":"入向 offset"},{"domain":122,"name":"trace_uplen_new_len[1]_rsv","bits":[7,7],"width":1,"desc":"reserved"},{"domain":122,"name":"trace_uplen_new_len[1]_egr_ofs","bits":[6,0],"width":7,"desc":"出向 offset"},{"domain":123,"name":"trace_uplen_new_len[2]_rsv","bits":[31,15],"width":17,"desc":"reserved（推断，待确认）"},{"domain":123,"name":"trace_uplen_new_len[2]_igr_ofs","bits":[14,8],"width":7,"desc":"入向 offset"},{"domain":123,"name":"trace_uplen_new_len[2]_rsv","bits":[7,7],"width":1,"desc":"reserved"},{"domain":123,"name":"trace_uplen_new_len[2]_egr_ofs","bits":[6,0],"width":7,"desc":"出向 offset"},{"domain":124,"name":"trace_uplen_new_len[3]_rsv","bits":[31,15],"width":17,"desc":"reserved（推断，待确认）"},{"domain":124,"name":"trace_uplen_new_len[3]_igr_ofs","bits":[14,8],"width":7,"desc":"入向 offset"},{"domain":124,"name":"trace_uplen_new_len[3]_rsv","bits":[7,7],"width":1,"desc":"reserved"},{"domain":124,"name":"trace_uplen_new_len[3]_egr_ofs","bits":[6,0],"width":7,"desc":"出向 offset"},{"domain":125,"name":"trace_igr_hdr_sum[0]_rsv","bits":[31,16],"width":16,"desc":"reserved"},{"domain":125,"name":"trace_igr_hdr_sum[0]_val","bits":[15,0],"width":16,"desc":"入向 hdr 统计和"},{"domain":126,"name":"trace_igr_hdr_sum[1]_rsv","bits":[31,16],"width":16,"desc":"reserved"},{"domain":126,"name":"trace_igr_hdr_sum[1]_val","bits":[15,0],"width":16,"desc":"入向 hdr 统计和"},{"domain":127,"name":"trace_igr_hdr_sum[2]_rsv","bits":[31,16],"width":16,"desc":"reserved"},{"domain":127,"name":"trace_igr_hdr_sum[2]_val","bits":[15,0],"width":16,"desc":"入向 hdr 统计和"},{"domain":128,"name":"trace_egr_hdr_sum[0]_rsv","bits":[31,16],"width":16,"desc":"reserved"},{"domain":128,"name":"trace_egr_hdr_sum[0]_val","bits":[15,0],"width":16,"desc":"出向 hdr 统计和"},{"domain":129,"name":"trace_egr_hdr_sum[1]_rsv","bits":[31,16],"width":16,"desc":"reserved"},{"domain":129,"name":"trace_egr_hdr_sum[1]_val","bits":[15,0],"width":16,"desc":"出向 hdr 统计和"},{"domain":130,"name":"trace_egr_hdr_sum[2]_rsv","bits":[31,16],"width":16,"desc":"reserved"},{"domain":130,"name":"trace_egr_hdr_sum[2]_val","bits":[15,0],"width":16,"desc":"出向 hdr 统计和"},{"domain":131,"name":"trace_igr_csm[0]_vld","bits":[31,31],"width":1,"desc":"有效"},{"domain":131,"name":"trace_igr_csm[0]_rsv","bits":[30,16],"width":15,"desc":"reserved"},{"domain":131,"name":"trace_igr_csm[0]_val","bits":[15,0],"width":16,"desc":"入向 csm 值"},{"domain":132,"name":"trace_igr_csm[1]_vld","bits":[31,31],"width":1,"desc":"有效"},{"domain":132,"name":"trace_igr_csm[1]_rsv","bits":[30,16],"width":15,"desc":"reserved"},{"domain":132,"name":"trace_igr_csm[1]_val","bits":[15,0],"width":16,"desc":"入向 csm 值"},{"domain":133,"name":"trace_pedt2epm_ots_rsv","bits":[31,22],"width":10,"desc":"reserved"},{"domain":133,"name":"trace_pedt2epm_ots_full","bits":[21,21],"width":1,"desc":"满标志"},{"domain":133,"name":"trace_pedt2epm_ots_copy_flag","bits":[20,20],"width":1,"desc":"copy 标志"},{"domain":133,"name":"trace_pedt2epm_ots_drop_fwd","bits":[19,19],"width":1,"desc":"drop/forward"},{"domain":133,"name":"trace_pedt2epm_ots_egr_port","bits":[18,14],"width":5,"desc":"出向 port"},{"domain":133,"name":"trace_pedt2epm_ots_loop_pri","bits":[13,13],"width":1,"desc":"环路优先级"},{"domain":133,"name":"trace_pedt2epm_ots_err","bits":[12,12],"width":1,"desc":"错误"},{"domain":133,"name":"trace_pedt2epm_ots_update_ts","bits":[11,11],"width":1,"desc":"更新时戳"},{"domain":133,"name":"trace_pedt2epm_ots_trunc_vld","bits":[10,10],"width":1,"desc":"截断有效"},{"domain":133,"name":"trace_pedt2epm_ots_trunc_size","bits":[9,0],"width":10,"desc":"截断长度"},{"domain":134,"name":"trace_pedt2epm_ptp_cmd","bits":[31,0],"width":32,"desc":"ptp 命令值"},{"domain":135,"name":"trace_pedt2epm_int_hdr[0]","bits":[31,0],"width":32,"desc":"内部 hdr"},{"domain":136,"name":"trace_pedt2epm_int_hdr[1]","bits":[31,0],"width":32,"desc":"内部 hdr"},{"domain":137,"name":"trace_pedt2epm_int_hdr[2]","bits":[31,0],"width":32,"desc":"内部 hdr"},{"domain":138,"name":"trace_pedt2epm_int_hdr[3]","bits":[31,0],"width":32,"desc":"内部 hdr"},{"domain":139,"name":"trace_pedt2epm_int_hdr[4]","bits":[31,0],"width":32,"desc":"内部 hdr"},{"domain":140,"name":"trace_pedt2epm_int_hdr[5]","bits":[31,0],"width":32,"desc":"内部 hdr"},{"domain":141,"name":"trace_pedt2epm_int_hdr[6]","bits":[31,0],"width":32,"desc":"内部 hdr"},{"domain":142,"name":"trace_pedt2epm_int_hdr[7]","bits":[31,0],"width":32,"desc":"内部 hdr"},{"domain":143,"name":"trace_pedt2epm_frm_hdr[0]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":144,"name":"trace_pedt2epm_frm_hdr[1]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":145,"name":"trace_pedt2epm_frm_hdr[2]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":146,"name":"trace_pedt2epm_frm_hdr[3]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":147,"name":"trace_pedt2epm_frm_hdr[4]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":148,"name":"trace_pedt2epm_frm_hdr[5]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":149,"name":"trace_pedt2epm_frm_hdr[6]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":150,"name":"trace_pedt2epm_frm_hdr[7]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":151,"name":"trace_pedt2epm_frm_hdr[8]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":152,"name":"trace_pedt2epm_frm_hdr[9]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":153,"name":"trace_pedt2epm_frm_hdr[10]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":154,"name":"trace_pedt2epm_frm_hdr[11]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":155,"name":"trace_pedt2epm_frm_hdr[12]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":156,"name":"trace_pedt2epm_frm_hdr[13]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":157,"name":"trace_pedt2epm_frm_hdr[14]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":158,"name":"trace_pedt2epm_frm_hdr[15]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":159,"name":"trace_pedt2epm_frm_hdr[16]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":160,"name":"trace_pedt2epm_frm_hdr[17]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":161,"name":"trace_pedt2epm_frm_hdr[18]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":162,"name":"trace_pedt2epm_frm_hdr[19]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":163,"name":"trace_pedt2epm_frm_hdr[20]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":164,"name":"trace_pedt2epm_frm_hdr[21]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":165,"name":"trace_pedt2epm_frm_hdr[22]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":166,"name":"trace_pedt2epm_frm_hdr[23]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":167,"name":"trace_pedt2epm_frm_hdr[24]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":168,"name":"trace_pedt2epm_frm_hdr[25]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":169,"name":"trace_pedt2epm_frm_hdr[26]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":170,"name":"trace_pedt2epm_frm_hdr[27]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":171,"name":"trace_pedt2epm_frm_hdr[28]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":172,"name":"trace_pedt2epm_frm_hdr[29]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":173,"name":"trace_pedt2epm_frm_hdr[30]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":174,"name":"trace_pedt2epm_frm_hdr[31]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":175,"name":"trace_pedt2epm_frm_hdr[32]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":176,"name":"trace_pedt2epm_frm_hdr[33]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":177,"name":"trace_pedt2epm_frm_hdr[34]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":178,"name":"trace_pedt2epm_frm_hdr[35]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":179,"name":"trace_pedt2epm_frm_hdr[36]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":180,"name":"trace_pedt2epm_frm_hdr[37]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":181,"name":"trace_pedt2epm_frm_hdr[38]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":182,"name":"trace_pedt2epm_frm_hdr[39]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":183,"name":"trace_pedt2epm_frm_hdr[40]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":184,"name":"trace_pedt2epm_frm_hdr[41]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":185,"name":"trace_pedt2epm_frm_hdr[42]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":186,"name":"trace_pedt2epm_frm_hdr[43]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":187,"name":"trace_pedt2epm_frm_hdr[44]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":188,"name":"trace_pedt2epm_frm_hdr[45]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":189,"name":"trace_pedt2epm_frm_hdr[46]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":190,"name":"trace_pedt2epm_frm_hdr[47]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":191,"name":"trace_pedt2epm_frm_hdr[48]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":192,"name":"trace_pedt2epm_frm_hdr[49]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":193,"name":"trace_pedt2epm_frm_hdr[50]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":194,"name":"trace_pedt2epm_frm_hdr[51]","bits":[31,0],"width":32,"desc":"帧 hdr"},{"domain":195,"name":"dbg_pedt_cr_cnt_rsv","bits":[31,5],"width":27,"desc":"reserved"},{"domain":195,"name":"dbg_pedt_cr_cnt_val0","bits":[4,0],"width":5,"desc":"信用值"},{"domain":196,"name":"dbg_bp_his_rsv","bits":[31,4],"width":28,"desc":"reserved"},{"domain":196,"name":"dbg_bp_his_meter2pedt2ppu","bits":[3,3],"width":1,"desc":"meter2pedt2ppu 反压历史"},{"domain":196,"name":"dbg_bp_his_epm2pedt2ppu","bits":[2,2],"width":1,"desc":"epm2pedt2ppu 反压历史"},{"domain":196,"name":"dbg_bp_his_meter2pedt","bits":[1,1],"width":1,"desc":"meter2pedt 反压历史"},{"domain":196,"name":"dbg_bp_his_epm2pedt","bits":[0,0],"width":1,"desc":"epm2pedt 反压历史"},{"domain":197,"name":"dbg_bp_cur_rsv","bits":[31,4],"width":28,"desc":"reserved"},{"domain":197,"name":"dbg_bp_cur_meter2pedt2ppu","bits":[3,3],"width":1,"desc":"meter2pedt2ppu 反压实时"},{"domain":197,"name":"dbg_bp_cur_epm2pedt2ppu","bits":[2,2],"width":1,"desc":"epm2pedt2ppu 反压实时"},{"domain":197,"name":"dbg_bp_cur_meter2pedt","bits":[1,1],"width":1,"desc":"meter2pedt 反压实时"},{"domain":197,"name":"dbg_bp_cur_epm2pedt","bits":[0,0],"width":1,"desc":"epm2pedt 反压实时"},{"domain":198,"name":"dbg_bp_set_rsv","bits":[31,2],"width":30,"desc":"reserved"},{"domain":198,"name":"dbg_bp_set_meter2pedt","bits":[1,1],"width":1,"desc":"强制拉起 meter2pedt 反压"},{"domain":198,"name":"dbg_bp_set_epm2pedt","bits":[0,0],"width":1,"desc":"强制拉起 epm2pedt 反压"},{"domain":199,"name":"dbg_bp_mask_rsv","bits":[31,2],"width":30,"desc":"reserved"},{"domain":199,"name":"dbg_bp_mask_meter2pedt","bits":[1,1],"width":1,"desc":"强制忽略 meter2pedt 反压"},{"domain":199,"name":"dbg_bp_mask_epm2pedt","bits":[0,0],"width":1,"desc":"强制忽略 epm2pedt 反压"},{"domain":200,"name":"dbg_epm2pedt_bp_max_cnt_clr","bits":[31,31],"width":1,"desc":"反压最大 cycle 清除"},{"domain":200,"name":"dbg_epm2pedt_bp_max_cnt_rsv","bits":[30,0],"width":31,"desc":"reserved"},{"domain":201,"name":"dbg_epm2pedt_bp_avg_prd_vld","bits":[31,31],"width":1,"desc":"周期写有效"},{"domain":201,"name":"dbg_epm2pedt_bp_avg_prd_rsv","bits":[30,24],"width":7,"desc":"reserved"},{"domain":201,"name":"dbg_epm2pedt_bp_avg_prd_val","bits":[23,0],"width":24,"desc":"反压平均时长统计周期"},{"domain":202,"name":"dbg_epm2pedt_bp_avg_cnt_rsv","bits":[31,16],"width":16,"desc":"reserved"},{"domain":202,"name":"dbg_epm2pedt_bp_avg_cnt_val","bits":[15,0],"width":16,"desc":"周期内反压 cycle（OCR 一版显示 rw/ro，一版 ro/wo，待确认）"},{"domain":203,"name":"dbg_port_pedt2epm_cfg_rsv","bits":[31,4],"width":28,"desc":"reserved（OCR 位界 31/16 或 15/0 两版，待确认）"},{"domain":203,"name":"dbg_port_pedt2epm_cfg_port_id","bits":[3,0],"width":4,"desc":"选择统计的 port"},{"domain":204,"name":"dbg_port_pedt2epm_cnt_lo","bits":[31,0],"width":32,"desc":"计满翻转"},{"domain":205,"name":"dbg_port_pedt2epm_cnt_hi","bits":[31,0],"width":32,"desc":"计满翻转"},{"domain":206,"name":"zone_info_pfifo_thr_rsv","bits":[31,9],"width":23,"desc":"reserved（OCR 一版显示 31/4，待确认）"},{"domain":206,"name":"zone_info_pfifo_thr_afull","bits":[8,0],"width":9,"desc":"将满阈值"},{"domain":207,"name":"pedt_cr_thr_rsv","bits":[31,5],"width":27,"desc":"reserved"},{"domain":207,"name":"pedt_cr_thr_val","bits":[4,0],"width":5,"desc":"信用阈值（OCR 一版显示 port_id[3:0]，待确认）"},{"domain":208,"name":"eco_reserved_rw0","bits":[31,0],"width":32,"desc":"ECO 预留（截图位域显示不完整，待确认）"},{"domain":209,"name":"eco_reserved_rw1","bits":[31,0],"width":32,"desc":"ECO 预留（截图位域显示不完整，待确认）"},{"domain":210,"name":"eco_reserved_ro0","bits":[31,0],"width":32,"desc":"ECO 预留（截图位域显示不完整，待确认）"},{"domain":211,"name":"eco_reserved_ro1","bits":[31,0],"width":32,"desc":"ECO 预留（截图位域显示不完整，待确认）"},{"domain":212,"name":"trace_egr_csm[0]_vld","bits":[31,31],"width":1,"desc":"有效"},{"domain":212,"name":"trace_egr_csm[0]_rsv","bits":[30,23],"width":8,"desc":"reserved"},{"domain":212,"name":"trace_egr_csm[0]_ofs","bits":[22,16],"width":7,"desc":"offset"},{"domain":212,"name":"trace_egr_csm[0]_val","bits":[15,0],"width":16,"desc":"出向 csm 值"},{"domain":213,"name":"trace_egr_csm[1]_vld","bits":[31,31],"width":1,"desc":"有效"},{"domain":213,"name":"trace_egr_csm[1]_rsv","bits":[30,23],"width":8,"desc":"reserved"},{"domain":213,"name":"trace_egr_csm[1]_ofs","bits":[22,16],"width":7,"desc":"offset"},{"domain":213,"name":"trace_egr_csm[1]_val","bits":[15,0],"width":16,"desc":"出向 csm 值"}]}}};
+  window.TRACE_RESULT = null;
+  </script>
+  <script>
+(function () {
+  "use strict";
+
+  const L = window.TRACE_LAYOUTS;
+  const IP_L = window.IPARSER_LAYOUTS || { traces: {} };
+  const EP_L = window.EPARSER_LAYOUTS || { traces: {} };
+  if (!L || !L.traces) {
+    document.getElementById("statusBar").textContent = "错误：未嵌入格式表，请运行 build_viewer.py";
+    return;
+  }
+
+  const IPP = [0,1,2,3,4,5,6,7,8];
+  const EPP = [9,10];
+  const TRACE_ORDER = ["cls","keygen","vme0","vme1","vme2","vme3","vme4","lrr","egr"];
+  const STAT_ORDER = ["trace_ctrl","other_cfg","cfg_inst","fw_init","fw_ecc","fw_dbg","bp_stat","fifo_thres"];
+  const PAW_NAME_RE = /^Paw\d+$/i;
+
+  let state = {
+    module: "mau",
+    result: null,
+    selection: null, // { type, mau, seg, mplIndex }
+    lastFields: [],
+  };
+
+  /* ---------- hex / bit helpers ---------- */
+  function parseU32Tokens(text) {
+    if (!text || !String(text).trim()) throw new Error("空输入");
+    // 先剥离 dump 标记行（====== / ---- start/end ----），避免
+    // "part 1/3 end" / "(1/3)" / "(3/3)" 中的数字被当成 u32 数据
+    const stripped = String(text).replace(/^.*======.*======.*$/gim, " ");
+    // 去掉 "0xADDR:" / "ADDR:"，避免 reg dump 地址被当成 Domain 数据
+    const cleaned = stripped.replace(/(?:^|\s)(?:0x)?[0-9a-fA-F]{1,8}\s*:/gim, " ");
+    const re = /0x[0-9a-fA-F]+|\b[0-9a-fA-F]{8}\b|\b\d+\b/g;
+    const tokens = cleaned.match(re);
+    if (!tokens) throw new Error("未找到合法 hex/数值");
+    return tokens.map((t) => {
+      let v;
+      if (/^0x/i.test(t)) v = parseInt(t, 16);
+      else if (/^[0-9a-fA-F]{8}$/.test(t)) v = parseInt(t, 16);
+      else v = parseInt(t, 10);
+      if (!Number.isFinite(v) || v < 0 || v > 0xffffffff) throw new Error("非法/超出 u32: " + t);
+      return v >>> 0;
+    });
+  }
+
+  /** bits: [hi, lo]，bit0=LSB，bit31=MSB；与 Verilog [hi:lo] 一致 */
+  function parseBitsHiLo(bits) {
+    if (!bits || bits.length !== 2) throw new Error("bits 须为 [hi, lo]，收到: " + JSON.stringify(bits));
+    const hi = bits[0] | 0, lo = bits[1] | 0;
+    if (hi < lo) throw new Error("bits 应为 [hi, lo] 且 hi>=lo（bit0=LSB），收到 [" + hi + ", " + lo + "]");
+    if (lo < 0 || hi > 31) throw new Error("非法 bits [" + hi + ":" + lo + "]（超出 u32 bit0..bit31）");
+    return { hi, lo, width: hi - lo + 1 };
+  }
+
+  function extractBits(word, hi, lo) {
+    if (hi < lo || lo < 0 || hi > 31) throw new Error("非法 bits [" + hi + ":" + lo + "]");
+    const width = hi - lo + 1;
+    const mask = width === 32 ? 0xffffffff : ((1 << width) - 1) >>> 0;
+    return (((word >>> 0) >>> lo) & mask) >>> 0;
+  }
+
+  function fmtVal(val, width) {
+    const hexW = Math.max(1, Math.ceil(width / 4));
+    let hex;
+    if (typeof val === "bigint") hex = "0x" + val.toString(16).padStart(hexW, "0");
+    else hex = "0x" + (val >>> 0).toString(16).padStart(hexW, "0");
+    const dec = val.toString();
+    let bin = "";
+    if (typeof val === "bigint") bin = width <= 64 ? ("0b" + val.toString(2).padStart(width, "0")) : ("0b…(" + width + "bit)");
+    else if (width <= 64) bin = "0b" + (val >>> 0).toString(2).padStart(width, "0");
+    else bin = "0b…(" + width + "bit)";
+    return { hex, dec, bin };
+  }
+
+  function reverseU8x4(val) {
+    const v = val >>> 0;
+    return (
+      ((v & 0x000000ff) << 24) |
+      ((v & 0x0000ff00) << 8) |
+      ((v & 0x00ff0000) >>> 8) |
+      ((v & 0xff000000) >>> 24)
+    ) >>> 0;
+  }
+
+  function applyByteRev(val, fd) {
+    const mode = fd && fd.byte_rev;
+    if (!mode) return val >>> 0;
+    if (mode === true || mode === "u8x4" || mode === "rev_u8" || mode === "true" || mode === 1)
+      return reverseU8x4(val);
+    throw new Error((fd.name || "") + ": 未知 byte_rev=" + mode);
+  }
+
+  function fieldRow(domain, name, hi, lo, width, value, desc, extra) {
+    const f = fmtVal(value, width);
+    const reserved = /^(rsv|reserved)$/i.test(name) || (desc && desc.indexOf("保留") >= 0);
+    const row = {
+      domain, name, bits: "[" + hi + ":" + lo + "]", hi, lo, width,
+      value, value_hex: f.hex, value_dec: f.dec, value_bin: f.bin,
+      desc: desc || "", reserved,
+    };
+    if (extra) Object.assign(row, extra);
+    return row;
+  }
+
+  function decodeComposedField(words, fd) {
+    const name = fd.name || "";
+    const pieces = fd.pieces || [];
+    if (!pieces.length) throw new Error(name + ": compose 字段缺少 pieces");
+    let hi, lo, width;
+    if (fd.bits) {
+      hi = fd.bits[0] | 0; lo = fd.bits[1] | 0;
+      if (hi < lo || lo < 0) throw new Error(name + ": 非法逻辑 bits [" + hi + ":" + lo + "]");
+      width = hi - lo + 1;
+    } else {
+      width = fd.width | 0;
+      if (width <= 0) throw new Error(name + ": 缺少 bits/width");
+      hi = width - 1; lo = 0;
+    }
+    if (fd.width != null && (fd.width | 0) !== width) {
+      throw new Error(name + ": width=" + fd.width + " 与 bits[" + hi + ":" + lo + "] 宽度 " + width + " 不一致");
+    }
+    let val = 0;
+    const srcParts = [];
+    const domains = [];
+    pieces.forEach((p) => {
+      const d = p.domain | 0;
+      const pb = parseBitsHiLo(p.bits);
+      if (!p.into || p.into.length !== 2) throw new Error(name + ": piece D" + d + " 缺少 into");
+      const ihi = p.into[0] | 0, ilo = p.into[1] | 0;
+      if (ihi < ilo || ilo < 0) throw new Error(name + ": 非法 into [" + ihi + ":" + ilo + "]");
+      if (ihi - ilo + 1 !== pb.width) {
+        throw new Error(name + ": D" + d + "[" + pb.hi + ":" + pb.lo + "] 宽与 into 不一致");
+      }
+      if (d < 0 || d >= words.length) throw new Error(name + ": D" + d + " 越界");
+      const piece = extractBits(words[d], pb.hi, pb.lo);
+      val |= piece << ilo;
+      srcParts.push("D" + d + "[" + pb.hi + ":" + pb.lo + "]→[" + ihi + ":" + ilo + "]");
+      domains.push(d);
+    });
+    const seen = [];
+    domains.forEach((d) => { if (seen.indexOf(d) < 0) seen.push(d); });
+    const mask = width === 32 ? 0xffffffff : ((1 << width) - 1) >>> 0;
+    return fieldRow(null, name, hi, lo, width, (val & mask) >>> 0, fd.desc, {
+      domain_label: seen.map((d) => "D" + d).join("+"),
+      bits: "[" + hi + ":" + lo + "] (" + srcParts.join("+") + ")",
+    });
+  }
+
+  function decodeTrace(words, layout, allowShort) {
+    const need = layout.word_count | 0;
+    const domainBase = (layout.domain_base | 0) || 0;
+    const minLen = need && domainBase ? domainBase + need : need;
+    if (minLen && words.length < minLen && !allowShort) {
+      throw new Error("长度不足：需要 " + minLen + " 个 Domain，实际 " + words.length);
+    }
+    const w = (need && !domainBase && words.length > need) ? words.slice(0, need) : words.slice();
+    const rows = [];
+    const errors = [];
+    (layout.fields || []).forEach((fd) => {
+      if (fd.pieces) {
+        try { rows.push(decodeComposedField(w, fd)); }
+        catch (e) { errors.push(e.message); }
+        return;
+      }
+      const domain = fd.domain | 0;
+      let hi, lo, width;
+      try {
+        const b = parseBitsHiLo(fd.bits);
+        hi = b.hi; lo = b.lo; width = b.width;
+        if (fd.width != null && (fd.width | 0) !== width) {
+          errors.push("D" + domain + " " + fd.name + ": width=" + fd.width + " 与 bits[" + hi + ":" + lo + "] 宽度 " + width + " 不一致，已按 bits 解析");
+        }
+      } catch (e) {
+        errors.push("D" + domain + " " + (fd.name || "") + ": " + e.message);
+        return;
+      }
+      if (domain < 0 || domain >= w.length) {
+        errors.push("D" + domain + " 越界: " + fd.name);
+        return;
+      }
+      try {
+        const val = applyByteRev(extractBits(w[domain], hi, lo), fd);
+        const row = fieldRow(domain, fd.name, hi, lo, width, val, fd.desc);
+        if (fd.byte_rev) row.byte_rev = fd.byte_rev;
+        rows.push(row);
+      } catch (e) {
+        errors.push("D" + domain + " " + fd.name + ": " + e.message);
+      }
+    });
+    return attachLurView(attachCtnU16View(attachWordHex(attachHexBlobs({
+      title: layout.title || "",
+      word_count: need,
+      words: w.map((x) => "0x" + (x >>> 0).toString(16).padStart(8, "0")),
+      fields: rows,
+      errors,
+    }))));
+  }
+
+  function attachHexBlobs(decoded) {
+    const fields = decoded.fields || [];
+    const blobs = [];
+    let i = 0;
+    while (i < fields.length) {
+      const f = fields[i];
+      const name = String(f.name || "");
+      if ((f.width | 0) === 32 && (f.hi | 0) === 31 && (f.lo | 0) === 0 && name) {
+        const group = [f];
+        let j = i + 1;
+        while (j < fields.length) {
+          const g = fields[j];
+          if (String(g.name || "") === name && (g.width | 0) === 32 && (g.hi | 0) === 31 && (g.lo | 0) === 0) {
+            group.push(g);
+            j++;
+          } else break;
+        }
+        if (group.length >= 2) {
+          const wordsHex = group.map((c) => {
+            const n = parseInt(String(c.value_hex || "0"), 16);
+            return "0x" + ((Number.isFinite(n) ? n : 0) >>> 0).toString(16).padStart(8, "0");
+          });
+          if (name === "mau_lpm_req_data" && j < fields.length) {
+            const tail = fields[j];
+            if (String(tail.name || "") === name && (tail.width | 0) === 16) {
+              const n = parseInt(String(tail.value_hex || "0"), 16);
+              wordsHex.push("0x" + ((Number.isFinite(n) ? n : 0) & 0xffff).toString(16).padStart(8, "0"));
+              j++;
+            }
+          }
+          const loDesc = group[0].desc || "";
+          const hiDesc = group[group.length - 1].desc || "";
+          blobs.push({
+            name,
+            label: name === "mau_lpm_req_data" ? (name + " · 原始") :
+              (loDesc ? (name + " · " + loDesc + " … " + hiDesc) : name),
+            hex_line: wordsHex.join(" "),
+            words_hex: wordsHex,
+            domains: group.map((c) => c.domain),
+            word_count: wordsHex.length,
+          });
+        }
+        i = j;
+        continue;
+      }
+      i++;
+    }
+    if (blobs.length) decoded.hex_blobs = blobs;
+    return decoded;
+  }
+
+  function assemblePayloadBits(words, fieldName, layout, opts) {
+    const msbFirst = !!(opts && opts.msb_first);
+    const pieces = [];
+    (layout.fields || []).forEach((fd) => {
+      if (fd.name !== fieldName) return;
+      const domain = fd.domain | 0;
+      const b = parseBitsHiLo(fd.bits);
+      if (domain >= words.length) throw new Error("拼包缺 Domain D" + domain);
+      const piece = extractBits(words[domain], b.hi, b.lo) >>> 0;
+      pieces.push({ piece, width: b.width });
+    });
+    if (!msbFirst) {
+      let acc = 0n;
+      let bitPos = 0n;
+      pieces.forEach(({ piece, width }) => {
+        acc |= BigInt(piece) << bitPos;
+        bitPos += BigInt(width);
+      });
+      return acc;
+    }
+    let total = 0;
+    pieces.forEach((p) => { total += p.width; });
+    let acc = 0n;
+    let bitPos = total;
+    pieces.forEach(({ piece, width }) => {
+      bitPos -= width;
+      const mask = (1n << BigInt(width)) - 1n;
+      acc |= (BigInt(piece) & mask) << BigInt(bitPos);
+    });
+    return acc;
+  }
+
+  function decodePayload(bitvec, payloadLayout, title) {
+    const rows = [];
+    (payloadLayout.fields || []).forEach((fd) => {
+      const hi = fd.bits[0] | 0, lo = fd.bits[1] | 0;
+      if (hi < lo || lo < 0) throw new Error("非法 payload bits [" + hi + ":" + lo + "]");
+      const width = hi - lo + 1;
+      const mask = (1n << BigInt(width)) - 1n;
+      const val = (bitvec >> BigInt(lo)) & mask;
+      const num = width <= 53 ? Number(val) : val;
+      const row = fieldRow(null, fd.name, hi, lo, width, num, fd.desc);
+      if (fd.highlight) row.highlight = fd.highlight;
+      if (width >= 64) {
+        const words = [];
+        const nwords = Math.ceil(width / 32);
+        for (let i = 0; i < nwords; i++) {
+          const w = Number((val >> BigInt(32 * i)) & 0xffffffffn);
+          words.push("0x" + (w >>> 0).toString(16).padStart(8, "0"));
+        }
+        if (fd.words_rev) words.reverse();
+        row.words_hex = words;
+        row.value_hex_words = words.join(" ");
+        if (fd.words_rev) row.words_rev = true;
+      }
+      rows.push(row);
+    });
+    const highlighted = rows.filter((r) => r.highlight);
+    const rest = rows.filter((r) => !r.highlight);
+    return {
+      title: title || payloadLayout.title || "payload",
+      width: payloadLayout.width | 0,
+      bitvec_hex: "0x" + bitvec.toString(16),
+      fields: highlighted.concat(rest),
+      enable_fields: highlighted,
+      note: payloadLayout.note || "",
+    };
+  }
+
+  function decodeMpl(words) {
+    if (!words.length) throw new Error("mpl：空输入");
+    let bitvec = 0n;
+    words.forEach((w, i) => { bitvec |= BigInt(w >>> 0) << BigInt(32 * i); });
+    return decodePayload(bitvec, L.payloads.mau_mpl_req_data, "mau_mpl_req_data");
+  }
+
+  function groupPawRows(fields) {
+    const other = [];
+    const pawRows = [];
+    let i = 0;
+    while (i < fields.length) {
+      const f = fields[i];
+      const name = String(f.name || "");
+      if (!PAW_NAME_RE.test(name)) { other.push(f); i++; continue; }
+      const group = [f];
+      let j = i + 1;
+      while (j < fields.length && String(fields[j].name || "") === name) { group.push(fields[j]); j++; }
+      // 列顺序与 yaml 一致：[31:0] → [63:32] → [95:64] → [127:96]
+      for (let k = 0; k < group.length; k += 4) {
+        const chunk = group.slice(k, k + 4);
+        pawRows.push({
+          name,
+          words_hex: chunk.map((c) => c.value_hex),
+          domains: chunk.map((c) => c.domain),
+          width_bits: 32 * chunk.length,
+        });
+      }
+      i = j;
+    }
+    return { other, pawRows };
+  }
+
+  function groupCtnU16Pairs(fields) {
+    const other = [];
+    const enMap = {};
+    const valMap = {};
+    let enSeq = 0, valSeq = 0;
+    const re = /ctn_u16_(en|val)\[(\d+)\]/i;
+    (fields || []).forEach((f) => {
+      const name = String(f.name || "");
+      const desc = String(f.desc || "");
+      const m = desc.match(re) || name.match(re);
+      if (name === "ctn_u16_en" || (m && String(m[1]).toLowerCase() === "en")) {
+        const idx = m ? +m[2] : enSeq;
+        enMap[idx] = f;
+        enSeq++;
+        return;
+      }
+      if (name === "ctn_u16_val" || (m && String(m[1]).toLowerCase() === "val")) {
+        const idx = m ? +m[2] : valSeq;
+        valMap[idx] = f;
+        valSeq++;
+        return;
+      }
+      other.push(f);
+    });
+    const keys = Object.keys(enMap).concat(Object.keys(valMap)).map(Number);
+    const uniq = [];
+    keys.forEach((k) => { if (uniq.indexOf(k) < 0) uniq.push(k); });
+    uniq.sort((a, b) => a - b);
+    if (!uniq.length) return { other: fields || [], pairs: [] };
+    const pairs = uniq.map((i) => ({ index: i, en: enMap[i] || null, val: valMap[i] || null }));
+    return { other, pairs };
+  }
+
+  function attachCtnU16View(decoded) {
+    if (!decoded || !decoded.fields) return decoded;
+    const { other, pairs } = groupCtnU16Pairs(decoded.fields);
+    if (!pairs.length) return decoded;
+    return Object.assign({}, decoded, { fields: other, ctn_u16_pairs: pairs });
+  }
+
+  function attachLurView(decoded) {
+    if (!decoded || !decoded.fields) return decoded;
+    const other = [];
+    const lur = [];
+    decoded.fields.forEach((f) => {
+      if (String(f.name || "").toLowerCase() === "lur") lur.push(f);
+      else other.push(f);
+    });
+    if (!lur.length) return decoded;
+
+    let acc = 0n;
+    let bitPos = 0n;
+    lur.forEach((f) => {
+      const width = BigInt(f.width | 0);
+      if (width <= 0n) return;
+      let raw;
+      if (typeof f.value === "bigint") raw = f.value;
+      else if (f.value != null) raw = BigInt(f.value >>> 0);
+      else raw = BigInt(parseInt(String(f.value_hex || "0"), 16) || 0);
+      const mask = (1n << width) - 1n;
+      acc |= (raw & mask) << bitPos;
+      bitPos += width;
+    });
+
+    const lur42 = acc & ((1n << 42n) - 1n);
+    const lur256 = (acc >> 42n) & ((1n << 256n) - 1n);
+    const hex42 = "0x" + lur42.toString(16).padStart(11, "0");
+    const words256 = [];
+    for (let i = 0; i < 8; i++) {
+      const w = Number((lur256 >> BigInt(32 * i)) & 0xffffffffn);
+      words256.push("0x" + (w >>> 0).toString(16).padStart(8, "0"));
+    }
+    const lurBlobs = [
+      {
+        name: "lur-42",
+        label: "lur-42 · Lur[41:0] · 42bit",
+        hex_line: hex42,
+        words_hex: [hex42],
+        width: 42,
+        word_count: 1,
+        bits: "[41:0]",
+      },
+      {
+        name: "lur-256",
+        label: "lur-256 · Lur[297:42] · 256bit（切片内低位→高位 8×u32）",
+        hex_line: words256.join(" "),
+        words_hex: words256,
+        width: 256,
+        word_count: 8,
+        bits: "[297:42]",
+      },
+    ];
+    const existing = (decoded.hex_blobs || []).filter(
+      (b) => String(b.name || "").toLowerCase() !== "lur"
+    );
+    return Object.assign({}, decoded, {
+      fields: other,
+      hex_blobs: existing.concat(lurBlobs),
+      lur_blobs: lurBlobs,
+    });
+  }
+
+  function attachPawView(decoded) {
+    if (!decoded || !decoded.fields) return decoded;
+    const { other, pawRows } = groupPawRows(decoded.fields);
+    if (!pawRows.length) return decoded;
+    return Object.assign({}, decoded, { fields: other, paw_rows: pawRows });
+  }
+
+  function decodeVme(words, vmeIndex) {
+    const need = 52;
+    if (words.length < need) throw new Error("vme 长度不足：需要 " + need + "，实际 " + words.length);
+    const w = words.slice(0, need);
+    return {
+      title: vmeIndex != null ? ("VME" + vmeIndex + " trace") : "VME trace",
+      word_count: need,
+      words: w.map((x) => "0x" + (x >>> 0).toString(16).padStart(8, "0")),
+      lama: attachPawView(decodeTrace(w, L.traces.vme_lama_trace)),
+      lamb: attachPawView(decodeTrace(w, L.traces.vme_lamb_trace)),
+      errors: [],
+    };
+  }
+
+  function previewMplReqFromKeygen(words) {
+    const keygen = L.traces.keygen_trace;
+    const need = keygen.word_count | 0;
+    if (words.length < need) throw new Error("keygen 长度不足：需要 " + need + "，实际 " + words.length);
+    const bitvec = assemblePayloadBits(words.slice(0, need), "mau_mpl_req_data", keygen);
+    return decodePayload(bitvec, L.payloads.mau_mpl_req_data, "mau_mpl_req_data");
+  }
+
+  function previewMplRspFromLrr(words) {
+    const payload = (L.payloads || {}).mau_mpl_rsp_data;
+    if (!payload) throw new Error("缺少 payloads.mau_mpl_rsp_data");
+    const lrr = L.traces.lrr_trace;
+    const need = lrr.word_count | 0;
+    if (words.length < need) throw new Error("lrr 长度不足：需要 " + need + "，实际 " + words.length);
+    const bitvec = assemblePayloadBits(words.slice(0, need), "Lur", lrr);
+    return decodePayload(bitvec, payload, "mau_mpl_rsp_data");
+  }
+
+  function collectMauLpmReqU32s(words, keygen) {
+    const out = [];
+    (keygen.fields || []).forEach((fd) => {
+      if (fd.name !== "mau_lpm_req_data") return;
+      const domain = fd.domain | 0;
+      const b = parseBitsHiLo(fd.bits);
+      if (domain >= words.length) throw new Error("拼包缺 Domain D" + domain);
+      let piece = extractBits(words[domain], b.hi, b.lo) >>> 0;
+      if (b.width < 32) piece &= (1 << b.width) - 1;
+      out.push(piece >>> 0);
+    });
+    if (out.length !== 9) throw new Error("mau_lpm_req_data 期望 9×u32（8×32+16），实际 " + out.length + " 片");
+    return out;
+  }
+
+  // 第 9 个 u32 低 16bit 的 hdr 位域（相对该 16bit，不采用 yaml payload bits）
+  const LPM_HDR_BITS = {
+    lu_sip_vld: [15, 15],
+    lu_dip_vld: [14, 14],
+    is_ipv6: [13, 13],
+    vrf: [12, 0],
+  };
+
+  function decodeLpmReqFromU32s(u32s, payloadLayout) {
+    const hdr = (u32s[8] >>> 0) & 0xffff;
+    const sipDisp = [u32s[7], u32s[6], u32s[5], u32s[4]].map((w) => w >>> 0);
+    const dipDisp = [u32s[3], u32s[2], u32s[1], u32s[0]].map((w) => w >>> 0);
+    function packBe128(ws) {
+      let v = 0n;
+      ws.forEach((w, i) => { v |= BigInt(w >>> 0) << BigInt(32 * (3 - i)); });
+      return v;
+    }
+    const sipVal = packBe128(sipDisp);
+    const dipVal = packBe128(dipDisp);
+    const wordsHex = u32s.map((w) => "0x" + (w >>> 0).toString(16).padStart(8, "0"));
+    const wordsHexLine = wordsHex.join(" ");
+    const rows = [];
+    (payloadLayout.fields || []).forEach((fd) => {
+      const name = fd.name || "";
+      let hi = fd.bits[0] | 0, lo = fd.bits[1] | 0;
+      let width = hi - lo + 1;
+      let row;
+      if (LPM_HDR_BITS[name]) {
+        hi = LPM_HDR_BITS[name][0];
+        lo = LPM_HDR_BITS[name][1];
+        width = hi - lo + 1;
+        const val = (hdr >> lo) & ((1 << width) - 1);
+        row = fieldRow(null, name, hi, lo, width, val, fd.desc);
+      } else if (name === "sip") {
+        const num = Number(sipVal);
+        row = fieldRow(null, name, hi, lo, 128, (num <= Number.MAX_SAFE_INTEGER ? num : sipVal), fd.desc);
+        row.words_hex = sipDisp.map((w) => "0x" + (w >>> 0).toString(16).padStart(8, "0"));
+        row.value_hex_words = row.words_hex.join(" ");
+        row.words_rev = true;
+      } else if (name === "dip") {
+        const num = Number(dipVal);
+        row = fieldRow(null, name, hi, lo, 128, (num <= Number.MAX_SAFE_INTEGER ? num : dipVal), fd.desc);
+        row.words_hex = dipDisp.map((w) => "0x" + (w >>> 0).toString(16).padStart(8, "0"));
+        row.value_hex_words = row.words_hex.join(" ");
+        row.words_rev = true;
+      } else {
+        row = fieldRow(null, name, hi, lo, width, 0, fd.desc);
+      }
+      if (fd.highlight) row.highlight = fd.highlight;
+      rows.push(row);
+    });
+    const highlighted = rows.filter((r) => r.highlight);
+    const rest = rows.filter((r) => !r.highlight);
+    return {
+      title: "lpm_mpl_req_data",
+      width: payloadLayout.width | 0,
+      bitvec_hex: wordsHexLine,
+      raw_u32s: wordsHex,
+      hex_blobs: [{
+        name: "mau_lpm_req_data",
+        label: "mau_lpm_req_data · 原始",
+        hex_line: wordsHexLine,
+        words_hex: wordsHex,
+        word_count: 9,
+      }],
+      fields: highlighted.concat(rest),
+      enable_fields: highlighted,
+      note: payloadLayout.note || "",
+    };
+  }
+
+  function previewLpmReqFromKeygen(words) {
+    const payload = (L.payloads || {}).lpm_mpl_req_data;
+    if (!payload) throw new Error("缺少 payloads.lpm_mpl_req_data");
+    const keygen = L.traces.keygen_trace;
+    const need = keygen.word_count | 0;
+    if (words.length < need) throw new Error("keygen 长度不足：需要 " + need + "，实际 " + words.length);
+    const u32s = collectMauLpmReqU32s(words.slice(0, need), keygen);
+    return decodeLpmReqFromU32s(u32s, payload);
+  }
+
+  function collectLpmResultU32s(words, egr) {
+    let lo32 = null, mid32 = null, hi12 = null;
+    (egr.fields || []).forEach((fd) => {
+      if (fd.name !== "lpm_result") return;
+      const domain = fd.domain | 0;
+      const b = parseBitsHiLo(fd.bits);
+      if (domain >= words.length) throw new Error("拼包缺 Domain D" + domain);
+      const piece = extractBits(words[domain], b.hi, b.lo) >>> 0;
+      if (b.width === 32) {
+        if (lo32 == null) lo32 = piece >>> 0;
+        else if (mid32 == null) mid32 = piece >>> 0;
+        else throw new Error("lpm_result 超过 2 个 u32");
+      } else if (b.width === 12) {
+        hi12 = piece & 0xfff;
+      } else {
+        throw new Error("lpm_result 片宽须为 32 或 12，实际 " + b.width);
+      }
+    });
+    if (lo32 == null || mid32 == null || hi12 == null) {
+      throw new Error("lpm_result 期望 2×u32 + 12bit");
+    }
+    return [lo32, mid32, hi12];
+  }
+
+  function assembleLpmRspBitvec(u32s) {
+    if (!u32s || u32s.length !== 3) throw new Error("lpm_result 需要 3 片，实际 " + (u32s ? u32s.length : 0));
+    return (
+      BigInt(u32s[0] >>> 0) |
+      (BigInt(u32s[1] >>> 0) << 32n) |
+      (BigInt(u32s[2] & 0xfff) << 64n)
+    );
+  }
+
+  function decodeLpmRspFromU32s(u32s, payloadLayout) {
+    const bitvec = assembleLpmRspBitvec(u32s);
+    const out = decodePayload(bitvec, payloadLayout, "lpm_mpl_rsp_data");
+    const wordsHex = [
+      "0x" + (u32s[0] >>> 0).toString(16).padStart(8, "0"),
+      "0x" + (u32s[1] >>> 0).toString(16).padStart(8, "0"),
+      "0x" + (u32s[2] & 0xfff).toString(16).padStart(8, "0"),
+    ];
+    out.raw_u32s = wordsHex;
+    out.hex_blobs = [{
+      name: "lpm_result",
+      label: "lpm_result · D48|D49|D50[11:0] → [63:0]|[75:64]",
+      hex_line: wordsHex.join(" "),
+      words_hex: wordsHex,
+      word_count: 3,
+    }];
+    return out;
+  }
+
+  function previewLpmRspFromEgr(words) {
+    const payload = (L.payloads || {}).lpm_mpl_rsp_data;
+    if (!payload) throw new Error("缺少 payloads.lpm_mpl_rsp_data");
+    const egr = L.traces.egr_trace;
+    const need = egr.word_count | 0;
+    if (words.length < need) throw new Error("egr 长度不足：需要 " + need + "，实际 " + words.length);
+    const u32s = collectLpmResultU32s(words.slice(0, need), egr);
+    return decodeLpmRspFromU32s(u32s, payload);
+  }
+
+  function expandStatSlots(section) {
+    const regs = section.registers || {};
+    const items = [];
+    Object.keys(regs).forEach((name) => {
+      const spec = regs[name];
+      if (!spec || typeof spec !== "object") return;
+      const offset = spec.offset | 0;
+      const count = (spec.count != null ? spec.count : 1) | 0 || 1;
+      const step = (spec.step != null ? spec.step : 4) | 0 || 4;
+      const fields = spec.fields || [];
+      const desc = spec.desc || "";
+      const itemsMeta = spec.items || [];
+      const regReset = spec.reset != null
+        ? ("0x" + (Number(spec.reset) >>> 0).toString(16))
+        : null;
+      const regWidth = spec.width != null ? (spec.width | 0) : null;
+      for (let i = 0; i < count; i++) {
+        const item = (itemsMeta[i] && typeof itemsMeta[i] === "object") ? itemsMeta[i] : {};
+        const itemName = item.name || "";
+        const itemDesc = item.desc || "";
+        const slotFields = fields.map((fd) => {
+          const copy = Object.assign({}, fd);
+          if (itemDesc) copy.desc = itemDesc;
+          return copy;
+        });
+        let slotName = count === 1 ? name : (name + "[" + i + "]");
+        if (itemName) slotName = count > 1 ? (slotName + "." + itemName) : itemName;
+        items.push({
+          name: slotName,
+          base_name: name,
+          index: count === 1 ? null : i,
+          offset: offset + i * step,
+          fields: slotFields,
+          desc: itemDesc || desc,
+          reg_reset: regReset,
+          reg_width: regWidth,
+        });
+      }
+    });
+    items.sort((a, b) => a.offset - b.offset || String(a.base_name).localeCompare(b.base_name));
+    return items;
+  }
+
+  function decodeRegisterFields(word, fields) {
+    const rows = [];
+    (fields || []).forEach((fd) => {
+      const b = parseBitsHiLo(fd.bits || [31, 0]);
+      const val = extractBits(word >>> 0, b.hi, b.lo);
+      const row = fieldRow(null, fd.name, b.hi, b.lo, b.width, val, fd.desc || "");
+      row.word_hex = "0x" + (word >>> 0).toString(16).padStart(8, "0");
+      if (fd.access) row.access = fd.access;
+      if (fd.type) row.type = fd.type;
+      if (fd.reset != null) {
+        const n = typeof fd.reset === "string" ? parseInt(fd.reset, 0) : (fd.reset | 0);
+        row.reset = "0x" + (n >>> 0).toString(16);
+      }
+      rows.push(row);
+    });
+    return rows;
+  }
+
+  function decodeStatisticsSection(sectionKey, words) {
+    const stats = L.statistics || {};
+    const key = String(sectionKey).toLowerCase();
+    if (!stats[key]) throw new Error("未知统计段: " + sectionKey);
+    const section = stats[key];
+    const slots = expandStatSlots(section);
+    const need = slots.length;
+    const errors = [];
+    if (need && words.length < need) errors.push("长度不足：需要 " + need + " 个 Domain，实际 " + words.length);
+    const registers = [];
+    const flat = [];
+    slots.forEach((slot, i) => {
+      if (i >= words.length) return;
+      const w = words[i] >>> 0;
+      const fields = decodeRegisterFields(w, slot.fields);
+      fields.forEach((f) => flat.push(Object.assign({}, f, { _reg: slot.name })));
+      const reg = {
+        name: slot.name,
+        base_name: slot.base_name,
+        index: slot.index,
+        offset: "0x" + slot.offset.toString(16),
+        word: "0x" + w.toString(16).padStart(8, "0"),
+        desc: slot.desc || "",
+        fields,
+      };
+      if (slot.reg_reset != null) reg.reset = slot.reg_reset;
+      if (slot.reg_width != null) reg.width = slot.reg_width;
+      registers.push(reg);
+    });
+    const extra = words.length > need
+      ? words.slice(need).map((w) => "0x" + (w >>> 0).toString(16).padStart(8, "0"))
+      : [];
+    if (extra.length) errors.push("多余 " + extra.length + " 个 Domain（yaml 定义 " + need + "）");
+    return {
+      kind: "statistics",
+      section: key,
+      title: section.title || key,
+      note: section.note || "",
+      word_count: words.length,
+      expected_count: need,
+      registers,
+      fields: flat,
+      extra_words: extra,
+      errors,
+    };
+  }
+
+  function decodeIparser(words) {
+    const layout = (IP_L.traces || {}).iparser_trace;
+    if (!layout) throw new Error("缺少 IPARSER_LAYOUTS.traces.iparser_trace");
+    return decodeTrace(words, layout);
+  }
+
+  function decodeEparser(words) {
+    const layout = (EP_L.traces || {}).eparser_trace;
+    if (!layout) throw new Error("缺少 EPARSER_LAYOUTS.traces.eparser_trace");
+    return decodeTrace(words, layout);
+  }
+
+  function decodePedt(words) {
+    const layout = (EP_L.traces || {}).pedt_trace;
+    if (!layout) throw new Error("缺少 EPARSER_LAYOUTS.traces.pedt_trace");
+    return decodeTrace(words, layout);
+  }
+
+  /** 为字段挂上所属 Domain 的原始 u32 hex */
+  function attachWordHex(decoded) {
+    if (!decoded || !decoded.fields) return decoded;
+    const words = decoded.words || [];
+    decoded.fields.forEach((f) => {
+      if (f.word_hex) return;
+      let idx = f.domain;
+      if (idx == null && f.domain_label) {
+        const m = String(f.domain_label).match(/D(\d+)/);
+        if (m) idx = +m[1];
+      }
+      if (idx == null) return;
+      const w = words[idx];
+      if (w == null) return;
+      f.word_hex = typeof w === "string" ? w : ("0x" + (w >>> 0).toString(16).padStart(8, "0"));
+    });
+    return decoded;
+  }
+
+  function decodeSegment(seg, words) {
+    const s = String(seg).toLowerCase().replace(/_trace$/, "");
+    if (STAT_ORDER.indexOf(s) >= 0 || (L.statistics && L.statistics[s])) {
+      return decodeStatisticsSection(s, words);
+    }
+    const vm = /^vme(\d)$/.exec(s);
+    if (s === "vme" || vm) return decodeVme(words, vm ? +vm[1] : null);
+    const map = {
+      cls: "cls_trace",
+      keygen: "keygen_trace",
+      lrr: "lrr_trace",
+      llr: "lrr_trace",
+      egr: "egr_trace",
+    };
+    const key = map[s];
+    if (!key || !L.traces[key]) throw new Error("未知子段: " + seg);
+    const out = decodeTrace(words, L.traces[key]);
+    if (s === "keygen") {
+      try {
+        out.mau_mpl_req_data = previewMplReqFromKeygen(words);
+      } catch (e) {
+        out.errors = (out.errors || []).concat(["mau_mpl_req_data: " + e.message]);
+      }
+      try {
+        out.lpm_mpl_req_data = previewLpmReqFromKeygen(words);
+      } catch (e) {
+        out.errors = (out.errors || []).concat(["lpm_mpl_req_data: " + e.message]);
+      }
+    }
+    if (s === "lrr" || s === "llr") {
+      try {
+        out.mau_mpl_rsp_data = previewMplRspFromLrr(words);
+      } catch (e) {
+        out.errors = (out.errors || []).concat(["mau_mpl_rsp_data: " + e.message]);
+      }
+    }
+    if (s === "egr") {
+      try {
+        out.lpm_mpl_rsp_data = previewLpmRspFromEgr(words);
+      } catch (e) {
+        out.errors = (out.errors || []).concat(["lpm_mpl_rsp_data: " + e.message]);
+      }
+    }
+    return out;
+  }
+
+  function mauDirection(i) {
+    if (IPP.indexOf(i) >= 0) return "ipp";
+    if (EPP.indexOf(i) >= 0) return "epp";
+    throw new Error("mau 索引越界: " + i);
+  }
+
+  /* ---------- log parse ---------- */
+  const BLOCK_RE = /----\s*(.+?)\s+(start|end)\s*----/gi;
+
+  function extractDumpRegions(text, module) {
+    const mod = String(module).toLowerCase();
+    const startRe = new RegExp(
+      "======\\s*" + mod + "\\s+register\\s+dump\\s+start(?:\\s*\\([^)]*\\))?\\s*======",
+      "gi"
+    );
+    const endRe = new RegExp(
+      "======\\s*" + mod + "\\s+register\\s+dump\\s+end(?:\\s*\\([^)]*\\))?\\s*======",
+      "gi"
+    );
+    const starts = [];
+    let m;
+    while ((m = startRe.exec(text))) starts.push(m);
+    const ends = [];
+    while ((m = endRe.exec(text))) ends.push(m);
+    const regions = [];
+    let ei = 0;
+    starts.forEach((sm, si) => {
+      while (ei < ends.length && ends[ei].index <= sm.index) ei++;
+      if (ei >= ends.length) return;
+      const em = ends[ei];
+      regions.push({
+        name: mod + "_dump#" + si,
+        text: text.slice(sm.index + sm[0].length, em.index),
+        kind: "dump",
+        start: sm.index + sm[0].length,
+        end: em.index,
+      });
+      ei++;
+    });
+    return regions;
+  }
+
+  function collectModuleWords(text, module) {
+    const prefix = String(module).toLowerCase();
+    const dumps = extractDumpRegions(text, prefix);
+    if (dumps.length) {
+      const out = [];
+      dumps.forEach((d) => {
+        try {
+          const words = parseU32Tokens(d.text);
+          if (words.length) out.push({ label: d.name, words });
+        } catch (e) { /* skip empty/invalid region */ }
+      });
+      if (out.length) return out;
+    }
+    const blocks = extractBlocks(text);
+    const whole = [];
+    const childWords = [];
+    let childCount = 0;
+    blocks.forEach((b) => {
+      const nl = String(b.name || "").toLowerCase().trim();
+      if (nl === prefix || nl === prefix + "_trace") {
+        try {
+          const words = parseU32Tokens(b.text);
+          if (words.length) whole.push({ label: b.name, words });
+        } catch (e) { /* skip */ }
+        return;
+      }
+      if (nl.indexOf(prefix + " ") === 0) {
+        try {
+          const words = parseU32Tokens(b.text);
+          if (words.length) {
+            childWords.push.apply(childWords, words);
+            childCount++;
+          }
+        } catch (e) { /* skip */ }
+      }
+    });
+    if (whole.length) return whole;
+    if (childWords.length) {
+      return [{ label: prefix + "_regs(" + childCount + ")", words: childWords }];
+    }
+    return [];
+  }
+
+  function extractBlocks(text) {
+    const matches = [];
+    let m;
+    const re = new RegExp(BLOCK_RE.source, "gi");
+    while ((m = re.exec(text))) {
+      matches.push({ name: m[1], kind: m[2].toLowerCase(), index: m.index, end: re.lastIndex });
+    }
+    if (!matches.length) {
+      return [{ name: "raw", text, kind: "raw", start: 0, end: text.length }];
+    }
+    const stack = [];
+    const blocks = [];
+    matches.forEach((mk) => {
+      if (mk.kind === "start") stack.push({ name: mk.name, contentStart: mk.end });
+      else {
+        for (let i = stack.length - 1; i >= 0; i--) {
+          if (stack[i].name.toLowerCase() === mk.name.toLowerCase()) {
+            const s = stack.splice(i, 1)[0];
+            blocks.push({
+              name: s.name,
+              text: text.slice(s.contentStart, mk.index),
+              kind: "block",
+              start: s.contentStart,
+              end: mk.index,
+            });
+            break;
+          }
+        }
+      }
+    });
+    return blocks;
+  }
+
+  function normalizeSeg(name) {
+    let n = name.trim().toLowerCase();
+    if (n.endsWith("_trace")) n = n.slice(0, -6);
+    if (STAT_ORDER.indexOf(n) >= 0) return n;
+    if (n === "llr") return "lrr";
+    if (["cls", "keygen", "egr", "lrr"].indexOf(n) >= 0) return n;
+    const vm = /^vme(\d)$/.exec(n);
+    if (vm) return "vme" + vm[1];
+    return n;
+  }
+
+  function parseLog(text) {
+    const blocks = extractBlocks(text);
+    const errors = [];
+    const mauSpans = [];
+    blocks.forEach((b) => {
+      const mm = /^mau(\d+)$/i.exec(b.name);
+      if (mm && b.kind === "block") mauSpans.push({ mau: +mm[1], start: b.start, end: b.end });
+    });
+
+    const mauData = {};
+    mauSpans.forEach((s) => { mauData[s.mau] = { trace: {}, statistics: {} }; });
+    const orphans = [];
+
+    function owningMau(pos) {
+      for (let i = 0; i < mauSpans.length; i++) {
+        const s = mauSpans[i];
+        if (pos >= s.start && pos < s.end) return s.mau;
+      }
+      return null;
+    }
+
+    const mplRaw = [];
+    const iparserRaw = [];
+
+    blocks.forEach((b) => {
+      if (/^mau\d+$/i.test(b.name)) return;
+      if (/^mpl(?:_trace|_req|_dump)?$/i.test(b.name)) {
+        try { mplRaw.push({ label: b.name, words: parseU32Tokens(b.text) }); }
+        catch (e) { errors.push("mpl: " + e.message); }
+        return;
+      }
+      if (/^iparser(?:_trace)?$/i.test(b.name)) {
+        try { iparserRaw.push({ label: b.name, words: parseU32Tokens(b.text) }); }
+        catch (e) { errors.push("iparser: " + e.message); }
+        return;
+      }
+      if (/^(?:eparser|pedt)(?:_trace)?(?:\s|$)/i.test(b.name)) return;
+      if (/^(?:mau_)?statistics$/i.test(b.name)) return;
+      const seg = normalizeSeg(b.name);
+      if (seg === "raw") {
+        try { orphans.push({ name: "raw", words: parseU32Tokens(b.text) }); }
+        catch (e) { errors.push(e.message); }
+        return;
+      }
+      const isStat = STAT_ORDER.indexOf(seg) >= 0;
+      if (["cls","keygen","lrr","egr"].indexOf(seg) >= 0 || /^vme\d$/.test(seg) || isStat) {
+        let words = [];
+        try {
+          if (String(b.text || "").trim()) words = parseU32Tokens(b.text);
+        } catch (e) {
+          if (!isStat) { errors.push(b.name + ": " + e.message); return; }
+        }
+        const owner = owningMau(b.start || 0);
+        const meta = {
+          label: b.name, words, word_count: words.length,
+          category: isStat ? "statistics" : "trace",
+        };
+        const bucket = isStat ? "statistics" : "trace";
+        const keyName = seg;
+        if (owner == null) orphans.push({ name: keyName, ...meta });
+        else {
+          if (!mauData[owner]) mauData[owner] = { trace: {}, statistics: {} };
+          if (!mauData[owner].trace) mauData[owner] = { trace: mauData[owner].segments || {}, statistics: {} };
+          mauData[owner][bucket][keyName] = meta;
+        }
+      }
+    });
+
+    if (!Object.keys(mauData).length && !orphans.length && !mplRaw.length && !iparserRaw.length) {
+      try { orphans.push({ name: "raw", words: parseU32Tokens(text) }); }
+      catch (e) { errors.push(e.message); }
+    }
+
+    const ipp = {}, epp = {};
+    const mplList = [];
+
+    Object.keys(mauData).map(Number).sort((a,b)=>a-b).forEach((mauIdx) => {
+      let direction;
+      try { direction = mauDirection(mauIdx); }
+      catch (e) { errors.push(e.message); return; }
+      const info = mauData[mauIdx];
+      // normalize legacy shape
+      const traceMap = info.trace || info.segments || {};
+      const statMap = info.statistics || {};
+      const cats = { trace: {}, statistics: {} };
+      const flat = {};
+      Object.keys(traceMap).forEach((seg) => {
+        const meta = traceMap[seg];
+        try {
+          const entry = {
+            ...meta,
+            words_hex: (meta.words || []).map((w) => "0x" + (w >>> 0).toString(16).padStart(8, "0")),
+            decoded: decodeSegment(seg, meta.words),
+            category: "trace",
+          };
+          // Skip adding per-index dbg_hdr_info_x / dbg_psv_info_x as separate segments; they are shown as compact arrays
+          if (!/^dbg_(?:hdr_info|psv_info)_\d+$/i.test(seg)) {
+            cats.trace[seg] = entry;
+            flat[seg] = entry;
+          }
+        } catch (e) {
+          errors.push("mau" + mauIdx + "." + seg + ": " + e.message);
+          const entry = { ...meta, error: e.message, category: "trace" };
+          if (!/^dbg_(?:hdr_info|psv_info)_\d+$/i.test(seg)) {
+            cats.trace[seg] = entry;
+            flat[seg] = entry;
+          }
+        }
+      });
+      Object.keys(statMap).forEach((seg) => {
+        const meta = statMap[seg];
+        const words = meta.words || [];
+        let entry;
+        try {
+          entry = {
+            ...meta,
+            words_hex: words.map((w) => "0x" + (w >>> 0).toString(16).padStart(8, "0")),
+            decoded: words.length ? decodeStatisticsSection(seg, words) : {
+              kind: "statistics", section: seg, title: seg, registers: [], fields: [], errors: ["空输入"],
+            },
+            category: "statistics",
+          };
+        } catch (e) {
+          errors.push("mau" + mauIdx + "." + seg + ": " + e.message);
+          entry = { ...meta, error: e.message, category: "statistics" };
+        }
+        // Skip per-index dbg_hdr_info_x / dbg_psv_info_x statistics entries
+        if (!/^dbg_(?:hdr_info|psv_info)_\d+$/i.test(seg)) {
+          cats.statistics[seg] = entry;
+          flat["stat:" + seg] = entry;
+        }
+      });
+      const node = { mau: mauIdx, direction, categories: cats, segments: flat };
+      (direction === "ipp" ? ipp : epp)["mau" + mauIdx] = node;
+    });
+
+    mplRaw.forEach((raw, i) => {
+      try {
+        mplList.push({
+          source: raw.label || ("mpl#" + i),
+          decoded: decodeMpl(raw.words),
+          word_count: raw.words.length,
+        });
+      } catch (e) { errors.push("mpl[" + i + "]: " + e.message); }
+    });
+
+    const iparserList = [];
+    iparserRaw.forEach((raw, i) => {
+      try {
+        iparserList.push({
+          source: raw.label || ("iparser#" + i),
+          decoded: decodeIparser(raw.words),
+          word_count: raw.words.length,
+          words_hex: raw.words.map((w) => "0x" + (w >>> 0).toString(16).padStart(8, "0")),
+        });
+      } catch (e) { errors.push("iparser[" + i + "]: " + e.message); }
+    });
+
+    const eparserList = [];
+    collectModuleWords(text, "eparser").forEach((raw, i) => {
+      try {
+        eparserList.push({
+          source: raw.label || ("eparser#" + i),
+          decoded: decodeEparser(raw.words),
+          word_count: raw.words.length,
+          words_hex: raw.words.map((w) => "0x" + (w >>> 0).toString(16).padStart(8, "0")),
+        });
+      } catch (e) { errors.push("eparser[" + i + "]: " + e.message); }
+    });
+
+    const pedtList = [];
+    collectModuleWords(text, "pedt").forEach((raw, i) => {
+      try {
+        pedtList.push({
+          source: raw.label || ("pedt#" + i),
+          decoded: decodePedt(raw.words),
+          word_count: raw.words.length,
+          words_hex: raw.words.map((w) => "0x" + (w >>> 0).toString(16).padStart(8, "0")),
+        });
+      } catch (e) { errors.push("pedt[" + i + "]: " + e.message); }
+    });
+
+    return {
+      modules: {
+        mpl: mplList,
+        mau: {
+          ipp, epp,
+          expected_ipp: IPP.map((i) => "mau" + i),
+          expected_epp: EPP.map((i) => "mau" + i),
+        },
+        iparser: iparserList,
+        eparser: eparserList,
+        pedt: pedtList,
+      },
+      orphans,
+      errors,
+    };
+  }
+
+  /* ---------- UI ---------- */
+  const $ = (id) => document.getElementById(id);
+  function setStatus(msg, cls) {
+    const el = $("parseStatus");
+    el.textContent = msg || "";
+    el.className = "status" + (cls ? " " + cls : "");
+  }
+
+  function setBar(msg) {
+    $("statusBar").textContent = msg;
+  }
+
+  function collectFields(decoded) {
+    if (!decoded) return [];
+    if (decoded.fields) return decoded.fields.slice();
+    let out = [];
+    if (decoded.lama && decoded.lama.fields) {
+      out = out.concat(decoded.lama.fields.map((f) => ({ ...f, _group: "lama" })));
+    }
+    if (decoded.lamb && decoded.lamb.fields) {
+      out = out.concat(decoded.lamb.fields.map((f) => ({ ...f, _group: "lamb" })));
+    }
+    return out;
+  }
+
+  function groupFieldsByDomain(fields) {
+    const groups = [];
+    (fields || []).forEach((f) => {
+      const key = f.domain == null
+        ? ("c:" + (f.domain_label || "_payload"))
+        : ("d:" + f.domain);
+      const last = groups[groups.length - 1];
+      if (last && last.key === key) last.fields.push(f);
+      else groups.push({ key, domain: f.domain, fields: [f] });
+    });
+    return groups;
+  }
+
+  function inferRegName(fields, fallback) {
+    const names = (fields || []).map((f) => String(f.name || ""));
+    if (!names.length) return fallback || "fields";
+    if (names.length === 1) return names[0];
+    let p = names[0];
+    names.slice(1).forEach((n) => {
+      while (p && n.indexOf(p) !== 0) p = p.slice(0, -1);
+    });
+    p = p.replace(/[_\s\[]+$/, "");
+    if (p) return p;
+    if (fields[0].domain != null) return "D" + fields[0].domain;
+    return fallback || "fields";
+  }
+
+  function fieldVisible(f, filter, groupName) {
+    if ($("hideRsv").checked && f.reserved) return false;
+    if (!filter) return true;
+    if (groupName && groupName.toLowerCase().indexOf(filter) >= 0) return true;
+    const blob = (String(f.name || "") + " " + String(f.desc || "")).toLowerCase();
+    return blob.indexOf(filter) >= 0;
+  }
+
+  function visibleFields(fields, groupName) {
+    const filter = ($("fieldFilter").value || "").trim().toLowerCase();
+    return (fields || []).filter((f) => fieldVisible(f, filter, groupName));
+  }
+
+  function renderSeg(summaryHtml, bodyHtml, open) {
+    return '<details class="seg"' + (open === false ? "" : " open") + "><summary>" +
+      summaryHtml + '</summary><div class="seg-body">' + (bodyHtml || "") + "</div></details>";
+  }
+
+  function renderGroupSummary(name, fields, extraMeta) {
+    const f0 = fields[0] || {};
+    const dom = f0.domain_label || (f0.domain == null ? "" : "D" + f0.domain);
+    const raw = f0.word_hex || "";
+    let s = '<span class="reg-name">' + escapeHtml(name) + "</span>";
+    if (dom) s += ' <span class="c-meta">· Domain ' + escapeHtml(String(dom)) + "</span>";
+    if (raw) s += ' <span class="c-hex">' + escapeHtml(raw) + "</span>";
+    s += ' <span class="c-meta">· ' + fields.length + " fields</span>";
+    if (extraMeta) s += ' <span class="c-meta">· ' + extraMeta + "</span>";
+    return s;
+  }
+
+  function wordBinFromHex(hex) {
+    if (!hex || hex === "—") return "";
+    const n = parseInt(String(hex), 16);
+    if (!Number.isFinite(n)) return "";
+    return "0b" + (n >>> 0).toString(2).padStart(32, "0");
+  }
+
+  function hexCell(text, bin, extraClass) {
+    const val = text || "—";
+    if (!bin) return '<td class="' + extraClass + '">' + escapeHtml(val) + "</td>";
+    return '<td class="' + extraClass + '">' +
+      '<span class="hex-toggle" title="点击显示/隐藏二进制">' + escapeHtml(val) + "</span>" +
+      '<div class="bin-reveal">' + escapeHtml(bin) + "</div></td>";
+  }
+
+  function isHiddenDbgVectorFieldName(name) {
+    return /^dbg_(?:hdr_info|psv_info)_(?:\d+)$/i.test(String(name || ""));
+  }
+
+  function renderFieldTable(fields, title) {
+    const rows = (fields || []).filter((f) => !isHiddenDbgVectorFieldName(String(f.name || "")));
+    let html = "";
+    if (title) html += '<div class="meta">' + escapeHtml(title) + "</div>";
+    html += '<table class="fields"><colgroup>';
+    html += '<col class="c-idx"><col class="c-dom"><col class="c-raw"><col class="c-field">';
+    html += '<col class="c-bits"><col class="c-w"><col class="c-hex"><col class="c-dec"><col class="c-desc">';
+    html += "</colgroup><thead><tr>";
+    html += "<th>Idx</th><th>Domain</th><th>Raw Word</th><th>Field</th><th>Bits</th><th>Width</th>";
+    html += "<th>Hex</th><th>Dec</th><th>Description</th>";
+    html += "</tr></thead><tbody>";
+    rows.forEach((f, idx) => {
+      const cls = (f.reserved ? "rsv" : "") + (f.highlight ? " highlight" : "");
+      const trCls = cls ? ' class="' + cls.trim() + '"' : "";
+      const dom = f.domain_label || (f.domain == null ? "—" : "D" + f.domain);
+      const fname = String(f.name || "");
+      html += "<tr" + trCls + ">";
+      html += '<td class="c-idx">' + idx + "</td>";
+      html += '<td class="c-dom" title="' + escapeHtml(String(dom)) + '">' + escapeHtml(String(dom)) + "</td>";
+      html += hexCell(f.word_hex || "—", wordBinFromHex(f.word_hex), "c-raw");
+      html += '<td class="c-field" title="' + escapeHtml(fname) + '">' + escapeHtml(fname) +
+        (f._group ? ' <span class="c-meta">(' + escapeHtml(f._group) + ")</span>" : "") + "</td>";
+      html += '<td class="c-bits" title="' + escapeHtml(f.bits || "") + '">' + escapeHtml(f.bits) + "</td>";
+      html += '<td class="c-w">' + f.width + "</td>";
+      html += hexCell(f.value_hex_words || f.value_hex, f.value_bin || "", "c-hex");
+      html += '<td class="c-dec">' + escapeHtml(String(f.value_dec)) + "</td>";
+      html += '<td class="c-desc">' + escapeHtml(f.desc || "") + "</td>";
+      html += "</tr>";
+    });
+    html += "</tbody></table>";
+    return html;
+  }
+
+  function detectWordArray(fields) {
+    if (!fields || !fields.length) return null;
+    const entries = [];
+    for (let i = 0; i < fields.length; i++) {
+      const f = fields[i];
+      const name = String(f.name || "");
+      const m = /^(dbg_(?:hdr_info|psv_info))_(\d+)$/i.exec(name);
+      if (!m) return null;
+      entries.push({ name: m[1], index: Number(m[2]), field: f });
+    }
+    const base = entries[0].name;
+    const count = entries.length;
+    if (count < 2) return null;
+    if (!entries.every((e) => e.name === base)) return null;
+    entries.sort((a, b) => a.index - b.index);
+    for (let i = 0; i < entries.length; i++) {
+      if (entries[i].index !== i) return null;
+    }
+    return { base, entries, count };
+  }
+
+  function groupFieldsByBaseName(fields) {
+    const groups = [];
+    const map = new Map();
+    (fields || []).forEach((f) => {
+      const name = String(f.name || "");
+      const m = /^(dbg_(?:hdr_info|psv_info))_(\d+)$/i.exec(name);
+      if (!m) {
+        const key = name || "__single__" + groups.length;
+        if (!map.has(key)) map.set(key, { key, name: key, fields: [] });
+        map.get(key).fields.push(f);
+        return;
+      }
+      const base = m[1];
+      if (!map.has(base)) map.set(base, { key: base, name: base, fields: [] });
+      map.get(base).fields.push(f);
+    });
+    map.forEach((g) => groups.push(g));
+    return groups;
+  }
+
+  function renderWordArrayTable(fields, title) {
+    const info = detectWordArray(fields || []);
+    if (!info) return renderFieldTable(fields || [], title);
+    const isHdr = /^dbg_hdr_info$/i.test(String(title || info.base || ''));
+    const isPsv = /^dbg_psv_info$/i.test(String(title || info.base || ''));
+    const rowSize = isHdr ? 2 : 8;
+    function renderU32Bytes(entry, littleEndian, bytesSeparated) {
+      const f = entry && entry.field;
+      if (!f) return '—';
+      const words = Array.isArray(f.value_hex_words) ? f.value_hex_words : [f.value_hex || '—'];
+      const rendered = words.map((w) => {
+        const s = String(w || '').trim();
+        if (!/^0x[0-9a-fA-F]+$/i.test(s)) return s || '—';
+        const n = parseInt(s, 16) >>> 0;
+        const bytes = littleEndian ? [n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff]
+          : [(n >>> 24) & 0xff, (n >>> 16) & 0xff, (n >>> 8) & 0xff, n & 0xff];
+        const byteStr = bytes.map((b) => ('00' + b.toString(16).toUpperCase()).slice(-2));
+        return bytesSeparated ? byteStr.join(' ') : byteStr.join('');
+      }).join('  ');
+      return rendered;
+    }
+    let html = '<div class="meta">' + escapeHtml(title || info.base) + ' · ' + info.count + '×u32</div>';
+    html += '<table class="fields compact-hex' + (isHdr ? ' compact-hdr' : '') + '"><tbody>';
+    const entriesList = isPsv ? info.entries.slice().reverse() : info.entries;
+    for (let row = 0; row < entriesList.length; row += rowSize) {
+      const chunk = entriesList.slice(row, row + rowSize);
+      html += '<tr>';
+      chunk.forEach((entry) => {
+        if (!entry) {
+          html += '<td class="c-hex compact">—</td>';
+          return;
+        }
+        const value = isHdr ? renderU32Bytes(entry, false, true) : renderU32Bytes(entry, true, false);
+        html += '<td class="c-hex compact">' + escapeHtml(value) + '</td>';
+      });
+      while (chunk.length < rowSize) {
+        html += '<td class="c-hex compact">—</td>';
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table>';
+    return html;
+  }
+
+  function renderFieldGroups(fields, fallbackName) {
+    const domainGroups = groupFieldsByDomain(fields || []);
+    const baseGroups = groupFieldsByBaseName(fields || []);
+    const arrayGroups = baseGroups.filter((g) => detectWordArray(g.fields || []));
+    const visibleNormalGroups = domainGroups.filter((g) => {
+      const arr = g.fields || [];
+      return !arr.some((f) => isHiddenDbgVectorFieldName(String(f.name || ""))) && !detectWordArray(arr);
+    });
+    const groups = arrayGroups.length ? arrayGroups.concat(visibleNormalGroups) : domainGroups;
+    if (!groups.length) {
+      return renderSeg(
+        '<span class="reg-name">' + escapeHtml(fallbackName || "fields") + "</span>",
+        renderFieldTable([], "")
+      );
+    }
+    let html = "";
+    groups.forEach((g) => {
+      const fieldsInGroup = g.fields || [];
+      const name = inferRegName(fieldsInGroup, fallbackName);
+      const vis = visibleFields(fieldsInGroup, name);
+      if (!vis.length) return;
+      if (detectWordArray(vis)) {
+        html += renderSeg(renderGroupSummary(name, vis), renderWordArrayTable(vis, name));
+      } else {
+        html += renderSeg(renderGroupSummary(name, vis), renderFieldTable(vis, ""));
+      }
+    });
+    return html;
+  }
+
+  function setViewStats(decoded, fields) {
+    const el = $("viewStats");
+    if (!el) return;
+    const list = fields || [];
+    let regs = 0;
+    if (decoded && decoded.registers) regs = decoded.registers.length;
+    else if (decoded && (decoded.lama || decoded.lamb)) {
+      regs = groupFieldsByDomain((decoded.lama && decoded.lama.fields) || []).length
+        + groupFieldsByDomain((decoded.lamb && decoded.lamb.fields) || []).length;
+    } else regs = groupFieldsByDomain(list).length;
+    const words = (decoded && (decoded.word_count || (decoded.words && decoded.words.length))) || 0;
+    const nz = list.filter((f) => {
+      const v = f.value;
+      if (typeof v === "bigint") return v !== 0n;
+      return (Number(v) || 0) !== 0;
+    }).length;
+    el.innerHTML =
+      "Registers: <span class=\"num\">" + regs + "</span>" +
+      "<span class=\"sep\"> | </span>Words: <span class=\"num\">" + words + "</span>" +
+      "<span class=\"sep\"> | </span>Fields: <span class=\"num\">" + list.length + "</span>" +
+      "<span class=\"sep\"> | </span>Non-zero: <span class=\"num\">" + nz + "</span>";
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    })[c]);
+  }
+
+  function renderHexBlobs(blobs) {
+    if (!blobs || !blobs.length) return "";
+    let html = "";
+    blobs.forEach((b) => {
+      html += '<div class="hex-blob">';
+      html += '<div class="hex-blob-title">' + escapeHtml(b.label || b.name || "hex") +
+        " · " + (b.word_count || 0) + "×u32（空格分隔）</div>";
+      html += '<pre class="hex-blob-body">' + escapeHtml(b.hex_line || "") + "</pre>";
+      html += "</div>";
+    });
+    return html;
+  }
+
+  function renderPawTable(pawRows) {
+    if (!pawRows || !pawRows.length) return "";
+    let html = '<div class="paw-hint">Paw：每行 4×u32，顺序与 yaml 一致（[31:0] → [127:96]）</div>';
+    html += '<table class="paw-table"><thead><tr><th>Name</th><th>[31:0]</th><th>[63:32]</th><th>[95:64]</th><th>[127:96]</th></tr></thead><tbody>';
+    pawRows.forEach((row) => {
+      const cells = row.words_hex.slice();
+      while (cells.length < 4) cells.push("—");
+      html += "<tr><td class=\"paw-name\">" + escapeHtml(row.name) + "</td>";
+      cells.slice(0, 4).forEach((c) => { html += "<td>" + escapeHtml(c) + "</td>"; });
+      html += "</tr>";
+    });
+    html += "</tbody></table>";
+    return html;
+  }
+
+  function renderCtnU16Pairs(pairs) {
+    if (!pairs || !pairs.length) return "";
+    const filter = ($("fieldFilter").value || "").trim().toLowerCase();
+    let html = '<div class="paw-hint">ctn_u16：每行一对 en[i] ↔ val[i]，共 ' + pairs.length + " 组</div>";
+    html += '<table class="fields ctn-pair"><thead><tr>';
+    html += "<th>Idx</th><th>Pair</th>";
+    html += "<th>en Domain</th><th>en Bits</th><th>en Hex</th><th>en Dec</th>";
+    html += "<th>val Domain</th><th>val Bits</th><th>val Hex</th><th>val Dec</th>";
+    html += "</tr></thead><tbody>";
+    let shown = 0;
+    pairs.forEach((p) => {
+      const label = "ctn_u16[" + p.index + "]";
+      const en = p.en || {};
+      const val = p.val || {};
+      const blob = (label + " " + (en.desc || "") + " " + (val.desc || "")).toLowerCase();
+      if (filter && blob.indexOf(filter) < 0) return;
+      shown++;
+      const enDom = en.domain == null ? "—" : "D" + en.domain;
+      const valDom = val.domain == null ? "—" : "D" + val.domain;
+      html += "<tr>";
+      html += '<td class="c-idx">' + p.index + "</td>";
+      html += '<td class="pair-name">' + escapeHtml(label) + "</td>";
+      html += '<td class="c-dom">' + escapeHtml(enDom) + "</td>";
+      html += '<td class="c-bits">' + escapeHtml(en.bits || "—") + "</td>";
+      html += hexCell(en.value_hex || "—", en.value_bin || "", "c-hex");
+      html += '<td class="c-dec">' + escapeHtml(en.value_dec != null ? String(en.value_dec) : "—") + "</td>";
+      html += '<td class="c-dom">' + escapeHtml(valDom) + "</td>";
+      html += '<td class="c-bits">' + escapeHtml(val.bits || "—") + "</td>";
+      html += hexCell(val.value_hex || "—", val.value_bin || "", "c-hex");
+      html += '<td class="c-dec">' + escapeHtml(val.value_dec != null ? String(val.value_dec) : "—") + "</td>";
+      html += "</tr>";
+    });
+    html += "</tbody></table>";
+    if (!shown) return "";
+    return html;
+  }
+
+  function flattenCtnPairs(pairs) {
+    const out = [];
+    (pairs || []).forEach((p) => {
+      if (p.en) out.push(p.en);
+      if (p.val) out.push(p.val);
+    });
+    return out;
+  }
+
+  function renderHalf(half) {
+    let html = "";
+    html += renderFieldGroups(half.fields || [], half.title || "fields");
+    if (half.paw_rows && half.paw_rows.length) {
+      html += renderSeg(
+        '<span class="reg-name">Paw</span> <span class="c-meta">· 4×u32 / 行</span>',
+        renderPawTable(half.paw_rows)
+      );
+    }
+    if (half.hex_blobs && half.hex_blobs.length) html += renderHexBlobs(half.hex_blobs);
+    return html;
+  }
+
+  function renderDecodedBlock(decoded, extra) {
+    if (!decoded) {
+      setViewStats(null, []);
+      return '<div class="placeholder">无数据</div>';
+    }
+    if (decoded.error) {
+      setViewStats(null, []);
+      return '<div class="status err">' + escapeHtml(decoded.error) + "</div>";
+    }
+    let html = "";
+    if (extra) html += extra;
+    if (decoded.kind === "statistics" || decoded.registers) {
+      if (decoded.note) html += '<div class="meta">' + escapeHtml(decoded.note) + "</div>";
+      html += '<div class="meta">' + escapeHtml(decoded.title || decoded.section || "") +
+        " · " + (decoded.word_count || 0) + "/" + (decoded.expected_count || "?") + " Domain</div>";
+      (decoded.registers || []).forEach((reg) => {
+        const vis = visibleFields(reg.fields || [], reg.name);
+        if (!vis.length) return;
+        let sum = '<span class="reg-name">' + escapeHtml(reg.name) + "</span>";
+        if (reg.offset) sum += ' @ <span class="c-addr">' + escapeHtml(reg.offset) + "</span>";
+        if (reg.word) sum += ' = <span class="c-hex">' + escapeHtml(reg.word) + "</span>";
+        if (reg.reset != null) sum += ' <span class="c-meta">· reset ' + escapeHtml(reg.reset) + "</span>";
+        if (reg.desc) sum += ' <span class="c-meta">· ' + escapeHtml(reg.desc) + "</span>";
+        html += renderSeg(sum, renderFieldTable(vis, ""));
+      });
+      if (decoded.extra_words && decoded.extra_words.length) {
+        html += '<div class="meta">多余 Domain: <span class="c-hex">' +
+          escapeHtml(decoded.extra_words.join(" ")) + "</span></div>";
+      }
+      if (decoded.errors && decoded.errors.length) {
+        html += '<div class="status warn">' + escapeHtml(decoded.errors.join("\n")) + "</div>";
+      }
+      state.lastFields = decoded.fields || [];
+      setViewStats(decoded, state.lastFields);
+      return html;
+    }
+    if (decoded.lama || decoded.lamb) {
+      html += renderSeg('<span class="reg-name">lama</span>', renderHalf(decoded.lama || {}));
+      html += renderSeg('<span class="reg-name">lamb</span>', renderHalf(decoded.lamb || {}));
+      state.lastFields = collectFields(decoded);
+    } else {
+      const enables = decoded.enable_fields || [];
+      if (enables.length) {
+        const visEn = visibleFields(enables, "读使能");
+        if (visEn.length) {
+          html += renderSeg(
+            '<span class="reg-name">读使能</span>',
+            renderFieldTable(visEn, "")
+          );
+        }
+      }
+      if (decoded.ctn_u16_pairs && decoded.ctn_u16_pairs.length) {
+        html += renderSeg(
+          '<span class="reg-name">ctn_u16</span> <span class="c-meta">· en[i] ↔ val[i] · ' +
+            decoded.ctn_u16_pairs.length + " pairs</span>",
+          renderCtnU16Pairs(decoded.ctn_u16_pairs)
+        );
+      }
+      html += renderFieldGroups(decoded.fields || [], decoded.title || "fields");
+      if (decoded.paw_rows && decoded.paw_rows.length) {
+        html += renderSeg(
+          '<span class="reg-name">Paw</span> <span class="c-meta">· 4×u32 / 行</span>',
+          renderPawTable(decoded.paw_rows)
+        );
+      }
+      if (decoded.lur_blobs && decoded.lur_blobs.length) {
+        html += renderSeg(
+          '<span class="reg-name">Lur</span> <span class="c-meta">· 298bit hex 概览（字段见 mau_mpl_rsp_data）</span>',
+          renderHexBlobs(decoded.lur_blobs)
+        );
+      }
+      const otherBlobs = (decoded.hex_blobs || []).filter(
+        (b) => !/^lur-/i.test(String(b.name || ""))
+      );
+      if (otherBlobs.length) html += renderHexBlobs(otherBlobs);
+      state.lastFields = flattenCtnPairs(decoded.ctn_u16_pairs).concat(decoded.fields || []);
+      if (decoded.errors && decoded.errors.length) {
+        html += '<div class="status warn">' + escapeHtml(decoded.errors.join("\n")) + "</div>";
+      }
+    }
+    ["mau_mpl_req_data", "mau_mpl_rsp_data", "lpm_mpl_req_data", "lpm_mpl_rsp_data"].forEach((key) => {
+      if (!decoded[key]) return;
+      html += renderPayloadSeg(decoded[key], key);
+      state.lastFields = (state.lastFields || []).concat(decoded[key].fields || []);
+    });
+    setViewStats(decoded, state.lastFields);
+    return html;
+  }
+
+  function renderPayloadSeg(p, name) {
+    if (!p) return "";
+    let body = "";
+    if (p.note) body += '<div class="meta">' + escapeHtml(p.note) + "</div>";
+    if (p.hex_blobs && p.hex_blobs.length) body += renderHexBlobs(p.hex_blobs);
+    const enables = p.enable_fields || (p.fields || []).filter((f) => f.highlight === "enable");
+    if (enables.length) {
+      const visEn = visibleFields(enables, "读使能");
+      if (visEn.length) {
+        body += renderSeg(
+          '<span class="reg-name">读使能</span>',
+          renderFieldTable(visEn, "")
+        );
+      }
+    }
+    body += renderFieldGroups(p.fields || [], p.title || name);
+    let sum = '<span class="reg-name">' + escapeHtml(name) + "</span>";
+    if (p.width) sum += ' <span class="c-meta">· ' + p.width + "bit</span>";
+    if (p.bitvec_hex && !(p.hex_blobs && p.hex_blobs.length)) {
+      sum += ' <span class="c-hex">' + escapeHtml(p.bitvec_hex) + "</span>";
+    }
+    return renderSeg(sum, body);
+  }
+
+  function renderMauBranch(node, i) {
+    const cats = (node && node.categories) || { trace: node && node.segments || {}, statistics: {} };
+    const trace = cats.trace || {};
+    const stats = cats.statistics || {};
+    const has = Object.keys(trace).length + Object.keys(stats).length;
+    let html = "<details" + (has ? " open" : "") + "><summary>mau" + i + (has ? "" : " · 空") + "</summary>";
+    html += "<details open><summary>trace</summary>";
+    TRACE_ORDER.forEach((seg) => {
+      if (!trace[seg]) return;
+      html += '<button type="button" class="leaf" data-sel="mau:' + i + ":trace:" + seg + '">' + seg + "</button>";
+    });
+    html += "</details>";
+    const statKeys = STAT_ORDER.filter((s) => stats[s]).concat(Object.keys(stats).filter((s) => STAT_ORDER.indexOf(s) < 0));
+    html += "<details" + (statKeys.length ? " open" : "") + "><summary>统计</summary>";
+    if (!statKeys.length) {
+      html += '<div class="meta" style="padding:0.25rem 0.4rem;">（无统计数据）</div>';
+    } else {
+      statKeys.forEach((seg) => {
+        html += '<button type="button" class="leaf" data-sel="mau:' + i + ":stat:" + seg + '">' + seg + "</button>";
+      });
+    }
+    html += "</details></details>";
+    return html;
+  }
+
+  function renderNav() {
+    const root = $("navTree");
+    const r = state.result;
+    if (!r) { root.innerHTML = ""; return; }
+    let html = "";
+    const mau = r.modules.mau;
+    html += "<details open><summary>mau · ipp</summary>";
+    IPP.forEach((i) => { html += renderMauBranch(mau.ipp["mau" + i], i); });
+    html += "</details>";
+    html += "<details open><summary>mau · epp</summary>";
+    EPP.forEach((i) => { html += renderMauBranch(mau.epp["mau" + i], i); });
+    html += "</details>";
+
+    html += "<details open><summary>mpl（独立模块）</summary>";
+    if (r.modules.mpl && r.modules.mpl.length) {
+      r.modules.mpl.forEach((m, idx) => {
+        html += '<button type="button" class="leaf" data-sel="mpl:' + idx + '">' +
+          escapeHtml(m.source || ("mpl#" + idx)) + "</button>";
+      });
+    } else {
+      html += '<div class="meta" style="padding:0.25rem 0.4rem;">无 mpl 块（用模块=mpl 粘贴，或日志 ---- mpl start ----）</div>';
+    }
+    html += "</details>";
+
+    html += "<details open><summary>iparser</summary>";
+    const ipList = Array.isArray(r.modules.iparser) ? r.modules.iparser : [];
+    if (ipList.length) {
+      ipList.forEach((m, idx) => {
+        html += '<button type="button" class="leaf" data-sel="iparser:' + idx + '">' +
+          escapeHtml(m.source || ("iparser#" + idx)) + " (" + (m.word_count || 0) + ")</button>";
+      });
+    } else {
+      html += '<div class="meta" style="padding:0.25rem 0.4rem;">无 iparser 块（模块=iparser 粘贴，或 ---- iparser start ----）</div>';
+    }
+    html += "</details>";
+
+    html += "<details open><summary>eparser</summary>";
+    const epList = Array.isArray(r.modules.eparser) ? r.modules.eparser : [];
+    if (epList.length) {
+      epList.forEach((m, idx) => {
+        html += '<button type="button" class="leaf" data-sel="eparser:' + idx + '">' +
+          escapeHtml(m.source || ("eparser#" + idx)) + " (" + (m.word_count || 0) + ")</button>";
+      });
+    } else {
+      html += '<div class="meta" style="padding:0.25rem 0.4rem;">无 eparser 块（模块=eparser 粘贴，或 ====== eparser register dump =====）</div>';
+    }
+    html += "</details>";
+
+    html += "<details open><summary>pedt</summary>";
+    const pdList = Array.isArray(r.modules.pedt) ? r.modules.pedt : [];
+    if (pdList.length) {
+      pdList.forEach((m, idx) => {
+        html += '<button type="button" class="leaf" data-sel="pedt:' + idx + '">' +
+          escapeHtml(m.source || ("pedt#" + idx)) + " (" + (m.word_count || 0) + ")</button>";
+      });
+    } else {
+      html += '<div class="meta" style="padding:0.25rem 0.4rem;">无 pedt 块（模块=pedt 粘贴，或 ====== pedt register dump =====）</div>';
+    }
+    html += "</details>";
+
+    if (r.orphans && r.orphans.length) {
+      html += "<details open><summary>未归属 / 粘贴结果</summary>";
+      r.orphans.forEach((o, idx) => {
+        html += '<button type="button" class="leaf" data-sel="orphan:' + idx + '">' +
+          escapeHtml(o.name) + " (" + o.word_count + ")</button>";
+      });
+      html += "</details>";
+    }
+    root.innerHTML = html;
+    root.querySelectorAll("button.leaf").forEach((btn) => {
+      btn.addEventListener("click", () => selectNav(btn.getAttribute("data-sel"), btn));
+    });
+  }
+
+  function selectNav(sel, btn) {
+    $("navTree").querySelectorAll("button.leaf").forEach((b) => b.classList.remove("active"));
+    if (btn) btn.classList.add("active");
+    const parts = sel.split(":");
+    const r = state.result;
+    const view = $("viewRoot");
+
+    if (parts[0] === "mau") {
+      const mau = +parts[1];
+      const kind = parts[2]; // trace | stat
+      const seg = parts[3];
+      state.selection = { type: "mau", mau, kind, seg };
+      state.module = "mau";
+      syncModuleTab("mau");
+      const dir = mauDirection(mau);
+      const node = r.modules.mau[dir]["mau" + mau];
+      const bucket = kind === "stat" ? "statistics" : "trace";
+      const meta = (node.categories && node.categories[bucket] && node.categories[bucket][seg])
+        || node.segments[seg];
+      let extra = '<div class="meta">mau' + mau + " · " + dir + " · " + bucket + " · " + seg;
+      if (meta && meta.word_count != null) extra += " · " + meta.word_count + " Domain";
+      extra += "</div>";
+      if (!meta) {
+        view.innerHTML = '<div class="placeholder">无数据</div>';
+      } else if (meta.placeholder) {
+        view.innerHTML = extra + '<div class="placeholder">' + escapeHtml(meta.message || "统计格式待定义") + "</div>";
+        if (meta.words_hex && meta.words_hex.length) {
+          view.innerHTML += '<pre style="font-family:var(--mono);font-size:0.8rem;white-space:pre-wrap;">' +
+            escapeHtml(meta.words_hex.join(" ")) + "</pre>";
+        }
+      } else if (meta.error) {
+        view.innerHTML = '<div class="status err">' + escapeHtml(meta.error) + "</div>";
+      } else {
+        view.innerHTML = renderDecodedBlock(meta.decoded, extra);
+      }
+      setBar("mau" + mau + " / " + bucket + " / " + seg);
+      return;
+    }
+    if (parts[0] === "mpl") {
+      const idx = +parts[1];
+      state.selection = { type: "mpl", mplIndex: idx };
+      state.module = "mpl";
+      syncModuleTab("mpl");
+      const m = r.modules.mpl[idx];
+      view.innerHTML = renderDecodedBlock(m.decoded,
+        '<div class="meta">' + escapeHtml(m.source) +
+        (m.decoded.bitvec_hex ? " · " + escapeHtml(m.decoded.bitvec_hex) : "") + "</div>");
+      setBar("mpl · " + (m.source || idx));
+      return;
+    }
+    if (parts[0] === "iparser") {
+      const idx = +parts[1];
+      state.selection = { type: "iparser", iparserIndex: idx };
+      state.module = "iparser";
+      syncModuleTab("iparser");
+      const list = Array.isArray(r.modules.iparser) ? r.modules.iparser : [];
+      const m = list[idx];
+      if (!m) {
+        view.innerHTML = '<div class="placeholder">无 iparser 数据</div>';
+        return;
+      }
+      view.innerHTML = renderDecodedBlock(m.decoded,
+        '<div class="meta">' + escapeHtml(m.source || "iparser") +
+        " · " + (m.word_count || 0) + " words</div>");
+      setBar("iparser · " + (m.source || idx));
+      return;
+    }
+    if (parts[0] === "eparser" || parts[0] === "pedt") {
+      const mod = parts[0];
+      const idx = +parts[1];
+      state.selection = { type: mod, index: idx };
+      state.module = mod;
+      syncModuleTab(mod);
+      const list = Array.isArray(r.modules[mod]) ? r.modules[mod] : [];
+      const m = list[idx];
+      if (!m) {
+        view.innerHTML = '<div class="placeholder">无 ' + mod + " 数据</div>";
+        return;
+      }
+      view.innerHTML = renderDecodedBlock(m.decoded,
+        '<div class="meta">' + escapeHtml(m.source || mod) +
+        " · " + (m.word_count || 0) + " words</div>");
+      setBar(mod + " · " + (m.source || idx));
+      return;
+    }
+    if (parts[0] === "orphan") {
+      const idx = +parts[1];
+      state.selection = { type: "orphan", orphanIndex: idx };
+      const o = r.orphans[idx];
+      view.innerHTML = o.decoded
+        ? renderDecodedBlock(o.decoded, '<div class="meta">orphan · ' + escapeHtml(o.name) + "</div>")
+        : '<div class="meta">raw · ' + o.word_count + " words</div><pre style=\"font-family:var(--mono);font-size:0.8rem;white-space:pre-wrap;\">" +
+          escapeHtml((o.words_hex || []).join(" ")) + "</pre>";
+      setBar("orphan · " + o.name);
+    }
+  }
+
+  function syncModuleTab(mod) {
+    document.querySelectorAll("#moduleTabs button").forEach((b) => {
+      b.classList.toggle("active", b.getAttribute("data-mod") === mod);
+    });
+  }
+
+  function showModule(mod) {
+    state.module = mod;
+    syncModuleTab(mod);
+    const view = $("viewRoot");
+    if (!state.result) {
+      view.innerHTML = '<div class="placeholder">尚无解析结果</div>';
+      return;
+    }
+    if (mod === "eparser" || mod === "pedt" || mod === "iparser") {
+      const list = Array.isArray(state.result.modules[mod]) ? state.result.modules[mod] : [];
+      if (!list.length) {
+        view.innerHTML = '<div class="placeholder">无 ' + mod +
+          " 数据（粘贴模块选 " + mod + "，或日志含对应 dump 标记）</div>";
+        setBar(mod + " · 无数据");
+        return;
+      }
+      const leaf = $("navTree").querySelector('button.leaf[data-sel="' + mod + ':0"]');
+      selectNav(mod + ":0", leaf);
+      return;
+    }
+    if (mod === "mpl") {
+      const list = state.result.modules.mpl;
+      if (!list.length) {
+        view.innerHTML = '<div class="placeholder">无 mpl 数据（mpl 为独立模块，请粘贴 mpl dump 或日志中的 mpl 块）</div>';
+        return;
+      }
+      const leaf = $("navTree").querySelector('button.leaf[data-sel="mpl:0"]');
+      selectNav("mpl:0", leaf);
+      return;
+    }
+    // mau: 选第一个有数据的
+    const mau = state.result.modules.mau;
+    let found = null;
+    IPP.concat(EPP).some((i) => {
+      const dir = i <= 8 ? "ipp" : "epp";
+      const node = mau[dir]["mau" + i];
+      if (!node) return false;
+      const trace = (node.categories && node.categories.trace) || node.segments || {};
+      const segs = Object.keys(trace);
+      if (!segs.length) return false;
+      const seg = TRACE_ORDER.find((s) => trace[s]) || segs[0];
+      found = { i, seg };
+      return true;
+    });
+    if (found) {
+      const leaf = $("navTree").querySelector(
+        'button.leaf[data-sel="mau:' + found.i + ":trace:" + found.seg + '"]'
+      );
+      selectNav("mau:" + found.i + ":trace:" + found.seg, leaf);
+    } else if (state.result.orphans && state.result.orphans.length) {
+      const leaf = $("navTree").querySelector('button.leaf[data-sel="orphan:0"]');
+      selectNav("orphan:0", leaf);
+    } else {
+      view.innerHTML = '<div class="placeholder">日志中未识别到 mau 子段；解析后请在左侧选择 mau 实例</div>';
+    }
+  }
+
+  function emptyMauMaps() {
+    return { ipp: {}, epp: {}, expected_ipp: IPP.map((i)=>"mau"+i), expected_epp: EPP.map((i)=>"mau"+i) };
+  }
+
+  function emptySideModules() {
+    return { iparser: [], eparser: [], pedt: [] };
+  }
+
+  function doParse() {
+    const text = $("pasteArea").value;
+    setStatus("");
+    try {
+      const result = parseLog(text);
+      state.result = result;
+      renderNav();
+      const errs = result.errors || [];
+      if (errs.length) setStatus(errs.join("\n"), "warn");
+      else setStatus("解析完成 — 请在左侧选择模块 / mau 实例", "");
+      const ipN = Array.isArray(result.modules.iparser) ? result.modules.iparser.length : 0;
+      const epN = Array.isArray(result.modules.eparser) ? result.modules.eparser.length : 0;
+      const pdN = Array.isArray(result.modules.pedt) ? result.modules.pedt.length : 0;
+      const mplN = Array.isArray(result.modules.mpl) ? result.modules.mpl.length : 0;
+      let nextMod = state.module;
+      if (state.module === "iparser" && !ipN) nextMod = "mau";
+      else if (state.module === "eparser" && !epN) nextMod = "mau";
+      else if (state.module === "pedt" && !pdN) nextMod = "mau";
+      else if (state.module === "mpl" && !mplN) nextMod = "mau";
+      showModule(nextMod);
+      setBar("解析完成 · mau ipp=" + Object.keys(result.modules.mau.ipp).length +
+        " epp=" + Object.keys(result.modules.mau.epp).length +
+        " mpl=" + mplN +
+        " iparser=" + ipN +
+        " eparser=" + epN +
+        " pedt=" + pdN +
+        " orphan=" + (result.orphans || []).length);
+    } catch (e) {
+      setStatus(String(e.message || e), "err");
+      setBar("解析失败");
+    }
+  }
+
+  function exportCsv() {
+    const fields = state.lastFields || [];
+    if (!fields.length) { setStatus("当前无可导出字段", "warn"); return; }
+    const hideRsv = $("hideRsv").checked;
+    const filter = ($("fieldFilter").value || "").trim().toLowerCase();
+    const lines = ["idx,domain,raw_word,field,bits,width,hex,dec,binary,desc"];
+    let idx = 0;
+    fields.forEach((f) => {
+      if (!fieldVisible(f, filter, "")) return;
+      if (hideRsv && f.reserved) return;
+      const row = [
+        idx++,
+        f.domain_label || (f.domain == null ? "" : f.domain),
+        f.word_hex || "",
+        f.name,
+        f.bits,
+        f.width,
+        f.value_hex,
+        f.value_dec,
+        f.value_bin || "",
+        '"' + String(f.desc || "").replace(/"/g, '""') + '"',
+      ];
+      lines.push(row.join(","));
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "trace_fields.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function selectionKey(sel) {
+    if (!sel) return "";
+    if (sel.type === "mau") return "mau:" + sel.mau + ":" + (sel.kind || "trace") + ":" + sel.seg;
+    if (sel.type === "mpl") return "mpl:" + sel.mplIndex;
+    if (sel.type === "iparser") return "iparser:" + sel.iparserIndex;
+    if (sel.type === "eparser" || sel.type === "pedt") return sel.type + ":" + sel.index;
+    if (sel.type === "orphan") return "orphan:" + sel.orphanIndex;
+    return "";
+  }
+
+  $("viewRoot").addEventListener("click", (ev) => {
+    const tog = ev.target.closest(".hex-toggle");
+    if (!tog || !$("viewRoot").contains(tog)) return;
+    if (window.getSelection && String(window.getSelection()).length) return;
+    const td = tog.closest("td");
+    if (!td) return;
+    td.classList.toggle("bin-show");
+  });
+  $("btnParse").addEventListener("click", doParse);
+  $("btnClear").addEventListener("click", () => {
+    $("pasteArea").value = "";
+    $("fileInput").value = "";
+    state.result = null;
+    state.lastFields = [];
+    $("navTree").innerHTML = "";
+    $("viewRoot").innerHTML = '<div class="placeholder">粘贴 hex 或选择日志文件后点击「解析」</div>';
+    setStatus("");
+    setBar("已清空");
+    setViewStats(null, []);
+  });
+  $("btnExport").addEventListener("click", exportCsv);
+  $("fieldFilter").addEventListener("input", () => {
+    const key = selectionKey(state.selection);
+    if (!key) return;
+    const leaf = $("navTree").querySelector('button.leaf[data-sel="' + key + '"]');
+    selectNav(key, leaf);
+  });
+  $("hideRsv").addEventListener("change", () => $("fieldFilter").dispatchEvent(new Event("input")));
+
+  $("fileInput").addEventListener("change", (ev) => {
+    const f = ev.target.files && ev.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      $("pasteArea").value = String(reader.result || "");
+      setStatus("已载入 " + f.name + "，点击解析", "");
+    };
+    reader.onerror = () => setStatus("读文件失败", "err");
+    reader.readAsText(f);
+  });
+
+  document.querySelectorAll("#moduleTabs button").forEach((b) => {
+    b.addEventListener("click", () => showModule(b.getAttribute("data-mod")));
+  });
+
+  // 预嵌入结果
+  if (window.TRACE_RESULT) {
+    state.result = window.TRACE_RESULT;
+    renderNav();
+    showModule("mau");
+    setBar("已加载预解析结果");
+  }
+})();
+  </script>
+</body>
+</html>

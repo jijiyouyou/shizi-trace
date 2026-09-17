@@ -1,0 +1,684 @@
+word_bits: 32
+bit_order: lsb0_in_word
+
+traces:
+  # eparser register dump layout
+  # every register is a 32-bit u32; words appear in address order in the dump text
+  eparser_trace:
+    title: Eparser register trace
+    word_count: 103
+    fields:
+      # dbg_trace_sel (0x314): [31:13] rsv, [12:5] pph_plac, [4:4] src
+      # register name unconfirmed in dfx.md
+      - { domain: 0  , name: dbg_trace_sel_rsv         , bits: [31, 13], width: 19, desc: "reserved" }
+      - { domain: 0  , name: dbg_trace_sel_pph_plac    , bits: [12, 5], width: 8 , desc: "trace 在 pph 网段的位置：0: pph[0] ... 255: pph[255]" }
+      - { domain: 0  , name: dbg_trace_sel_src         , bits: [4, 4], width: 1 , desc: "trace 标志来源：1'b0 来源于 pph，1'b1 来源于 port_cfg" }
+      # dbg_trace_ctrl (0x318): [3:2] psv_dword, [1:1] hdr_dword, [0:0] mode
+      - { domain: 1  , name: dbg_trace_ctrl_psv_dword  , bits: [3, 2], width: 2 , desc: "输出给 PPU 的 PSV 抓取：0=抓最高位开始第 3 个 64B，1=第 2 个，2=第 1 个" }
+      - { domain: 1  , name: dbg_trace_ctrl_hdr_dword  , bits: [1, 1], width: 1 , desc: "EPI 输入的 hdr 抓取：0=抓最高位开始第 2 个 64B，1=第 1 个" }
+      - { domain: 1  , name: dbg_trace_ctrl_mode       , bits: [0, 0], width: 1 , desc: "trace trig 模式：1'b0 持续抓取带 trace 标记的报文，1'b1 只抓取第一个带 trace 标记的" }
+      # dbg_trace_clr (0x31c): [31:1] rsv, [0:0] clr
+      - { domain: 2  , name: dbg_trace_clr_rsv         , bits: [31, 1], width: 31, desc: "reserved" }
+      - { domain: 2  , name: dbg_trace_clr_clr         , bits: [0, 0], width: 1 , desc: "trace trig info clear" }
+      # dbg_hdr_info (0x320): array total:16 step:0x4
+      - { domain: 3  , name: "dbg_hdr_info[0]"           , bits: [31, 0], width: 32, desc: "EPI 输入的 hdr 信息" }
+      - { domain: 4  , name: "dbg_hdr_info[1]"           , bits: [31, 0], width: 32, desc: "EPI 输入的 hdr 信息" }
+      - { domain: 5  , name: "dbg_hdr_info[2]"           , bits: [31, 0], width: 32, desc: "EPI 输入的 hdr 信息" }
+      - { domain: 6  , name: "dbg_hdr_info[3]"           , bits: [31, 0], width: 32, desc: "EPI 输入的 hdr 信息" }
+      - { domain: 7  , name: "dbg_hdr_info[4]"           , bits: [31, 0], width: 32, desc: "EPI 输入的 hdr 信息" }
+      - { domain: 8  , name: "dbg_hdr_info[5]"           , bits: [31, 0], width: 32, desc: "EPI 输入的 hdr 信息" }
+      - { domain: 9  , name: "dbg_hdr_info[6]"           , bits: [31, 0], width: 32, desc: "EPI 输入的 hdr 信息" }
+      - { domain: 10 , name: "dbg_hdr_info[7]"           , bits: [31, 0], width: 32, desc: "EPI 输入的 hdr 信息" }
+      - { domain: 11 , name: "dbg_hdr_info[8]"           , bits: [31, 0], width: 32, desc: "EPI 输入的 hdr 信息" }
+      - { domain: 12 , name: "dbg_hdr_info[9]"           , bits: [31, 0], width: 32, desc: "EPI 输入的 hdr 信息" }
+      - { domain: 13 , name: "dbg_hdr_info[10]"          , bits: [31, 0], width: 32, desc: "EPI 输入的 hdr 信息" }
+      - { domain: 14 , name: "dbg_hdr_info[11]"          , bits: [31, 0], width: 32, desc: "EPI 输入的 hdr 信息" }
+      - { domain: 15 , name: "dbg_hdr_info[12]"          , bits: [31, 0], width: 32, desc: "EPI 输入的 hdr 信息" }
+      - { domain: 16 , name: "dbg_hdr_info[13]"          , bits: [31, 0], width: 32, desc: "EPI 输入的 hdr 信息" }
+      - { domain: 17 , name: "dbg_hdr_info[14]"          , bits: [31, 0], width: 32, desc: "EPI 输入的 hdr 信息" }
+      - { domain: 18 , name: "dbg_hdr_info[15]"          , bits: [31, 0], width: 32, desc: "EPI 输入的 hdr 信息" }
+      # dbg_psv_info (0x360): array total:16 step:0x4
+      - { domain: 19 , name: "dbg_psv_info[0]"           , bits: [31, 0], width: 32, desc: "输出给 PPU 的 psv 信息" }
+      - { domain: 20 , name: "dbg_psv_info[1]"           , bits: [31, 0], width: 32, desc: "输出给 PPU 的 psv 信息" }
+      - { domain: 21 , name: "dbg_psv_info[2]"           , bits: [31, 0], width: 32, desc: "输出给 PPU 的 psv 信息" }
+      - { domain: 22 , name: "dbg_psv_info[3]"           , bits: [31, 0], width: 32, desc: "输出给 PPU 的 psv 信息" }
+      - { domain: 23 , name: "dbg_psv_info[4]"           , bits: [31, 0], width: 32, desc: "输出给 PPU 的 psv 信息" }
+      - { domain: 24 , name: "dbg_psv_info[5]"           , bits: [31, 0], width: 32, desc: "输出给 PPU 的 psv 信息" }
+      - { domain: 25 , name: "dbg_psv_info[6]"           , bits: [31, 0], width: 32, desc: "输出给 PPU 的 psv 信息" }
+      - { domain: 26 , name: "dbg_psv_info[7]"           , bits: [31, 0], width: 32, desc: "输出给 PPU 的 psv 信息" }
+      - { domain: 27 , name: "dbg_psv_info[8]"           , bits: [31, 0], width: 32, desc: "输出给 PPU 的 psv 信息" }
+      - { domain: 28 , name: "dbg_psv_info[9]"           , bits: [31, 0], width: 32, desc: "输出给 PPU 的 psv 信息" }
+      - { domain: 29 , name: "dbg_psv_info[10]"          , bits: [31, 0], width: 32, desc: "输出给 PPU 的 psv 信息" }
+      - { domain: 30 , name: "dbg_psv_info[11]"          , bits: [31, 0], width: 32, desc: "输出给 PPU 的 psv 信息" }
+      - { domain: 31 , name: "dbg_psv_info[12]"          , bits: [31, 0], width: 32, desc: "输出给 PPU 的 psv 信息" }
+      - { domain: 32 , name: "dbg_psv_info[13]"          , bits: [31, 0], width: 32, desc: "输出给 PPU 的 psv 信息" }
+      - { domain: 33 , name: "dbg_psv_info[14]"          , bits: [31, 0], width: 32, desc: "输出给 PPU 的 psv 信息" }
+      - { domain: 34 , name: "dbg_psv_info[15]"          , bits: [31, 0], width: 32, desc: "输出给 PPU 的 psv 信息" }
+      # dbg_pph_info (0x3a0): array total:8 step:0x4
+      - { domain: 35 , name: "dbg_pph_info[0]"           , bits: [31, 0], width: 32, desc: "EPM 输入的 pph 信息" }
+      - { domain: 36 , name: "dbg_pph_info[1]"           , bits: [31, 0], width: 32, desc: "EPM 输入的 pph 信息" }
+      - { domain: 37 , name: "dbg_pph_info[2]"           , bits: [31, 0], width: 32, desc: "EPM 输入的 pph 信息" }
+      - { domain: 38 , name: "dbg_pph_info[3]"           , bits: [31, 0], width: 32, desc: "EPM 输入的 pph 信息" }
+      - { domain: 39 , name: "dbg_pph_info[4]"           , bits: [31, 0], width: 32, desc: "EPM 输入的 pph 信息" }
+      - { domain: 40 , name: "dbg_pph_info[5]"           , bits: [31, 0], width: 32, desc: "EPM 输入的 pph 信息" }
+      - { domain: 41 , name: "dbg_pph_info[6]"           , bits: [31, 0], width: 32, desc: "EPM 输入的 pph 信息" }
+      - { domain: 42 , name: "dbg_pph_info[7]"           , bits: [31, 0], width: 32, desc: "EPM 输入的 pph 信息" }
+      # dbg_etmh_info (0x3c0): array total:2 step:0x4
+      - { domain: 43 , name: "dbg_etmh_info[0]"          , bits: [31, 0], width: 32, desc: "EPM 输入的 etmh 信息" }
+      - { domain: 44 , name: "dbg_etmh_info[1]"          , bits: [31, 0], width: 32, desc: "EPM 输入的 etmh 信息" }
+      # dbg_pedt_info (0x3c8): array total:3 step:0x4
+      - { domain: 45 , name: "dbg_pedt_info[0]"          , bits: [31, 0], width: 32, desc: "输出给 PEDT 的信息" }
+      - { domain: 46 , name: "dbg_pedt_info[1]"          , bits: [31, 0], width: 32, desc: "输出给 PEDT 的信息" }
+      - { domain: 47 , name: "dbg_pedt_info[2]"          , bits: [31, 0], width: 32, desc: "输出给 PEDT 的信息" }
+      # dbg_eof_out_info (0x3d4): [31:13] rsv, [12:8] portid, [7:0] pktid
+      - { domain: 48 , name: dbg_eof_out_info_rsv      , bits: [31, 13], width: 19, desc: "reserved" }
+      - { domain: 48 , name: dbg_eof_out_info_portid   , bits: [12, 8], width: 5 , desc: "输出的 portid" }
+      - { domain: 48 , name: dbg_eof_out_info_pktid    , bits: [7, 0], width: 8 , desc: "输出的 pktid" }
+      # dbg_mpl_req_info (0x3d8): array total:3 step:0x4
+      - { domain: 49 , name: "dbg_mpl_req_info[0]"       , bits: [31, 0], width: 32, desc: "mpl req 信息" }
+      - { domain: 50 , name: "dbg_mpl_req_info[1]"       , bits: [31, 0], width: 32, desc: "mpl req 信息" }
+      - { domain: 51 , name: "dbg_mpl_req_info[2]"       , bits: [31, 0], width: 32, desc: "mpl req 信息" }
+      # dbg_mpl_rsp_info (0x3e4): array total:9 step:0x4
+      - { domain: 52 , name: "dbg_mpl_rsp_info[0]"       , bits: [31, 0], width: 32, desc: "MPL 返回的 data 记录" }
+      - { domain: 53 , name: "dbg_mpl_rsp_info[1]"       , bits: [31, 0], width: 32, desc: "MPL 返回的 data 记录" }
+      - { domain: 54 , name: "dbg_mpl_rsp_info[2]"       , bits: [31, 0], width: 32, desc: "MPL 返回的 data 记录" }
+      - { domain: 55 , name: "dbg_mpl_rsp_info[3]"       , bits: [31, 0], width: 32, desc: "MPL 返回的 data 记录" }
+      - { domain: 56 , name: "dbg_mpl_rsp_info[4]"       , bits: [31, 0], width: 32, desc: "MPL 返回的 data 记录" }
+      - { domain: 57 , name: "dbg_mpl_rsp_info[5]"       , bits: [31, 0], width: 32, desc: "MPL 返回的 data 记录" }
+      - { domain: 58 , name: "dbg_mpl_rsp_info[6]"       , bits: [31, 0], width: 32, desc: "MPL 返回的 data 记录" }
+      - { domain: 59 , name: "dbg_mpl_rsp_info[7]"       , bits: [31, 0], width: 32, desc: "MPL 返回的 data 记录" }
+      - { domain: 60 , name: "dbg_mpl_rsp_info[8]"       , bits: [31, 0], width: 32, desc: "MPL 返回的 data 记录" }
+      # dbg_sfr_info (0x408): [31:26] rsv, [25:21] wb_prof, [20:17] hit_idx, [16:16] hit_flag, [15:8] match_8bit, [7:0] ori_8bit
+      - { domain: 61 , name: dbg_sfr_info_rsv          , bits: [31, 26], width: 6 , desc: "reserved" }
+      - { domain: 61 , name: dbg_sfr_info_wb_prof      , bits: [25, 21], width: 5 , desc: "wb_prof" }
+      - { domain: 61 , name: dbg_sfr_info_hit_idx      , bits: [20, 17], width: 4 , desc: "hit 索引，hit flag 为 1 时有效" }
+      - { domain: 61 , name: dbg_sfr_info_hit_flag     , bits: [16, 16], width: 1 , desc: "hit 标志" }
+      - { domain: 61 , name: dbg_sfr_info_match_8bit   , bits: [15, 8], width: 8 , desc: "与或之后进行匹配的 8bit" }
+      - { domain: 61 , name: dbg_sfr_info_ori_8bit     , bits: [7, 0], width: 8 , desc: "从 etmh 和 pph 中提取的原始 8bit" }
+      # dbg_rcd_zoneid (0x40c): [31:20] zoneid2, [19:8] zoneid1, [7:0] zoneid0
+      - { domain: 62 , name: dbg_rcd_zoneid_zoneid2    , bits: [31, 20], width: 12, desc: "zoneid2" }
+      - { domain: 62 , name: dbg_rcd_zoneid_zoneid1    , bits: [19, 8], width: 12, desc: "zoneid1" }
+      - { domain: 62 , name: dbg_rcd_zoneid_zoneid0    , bits: [7, 0], width: 8 , desc: "zoneid0" }
+      # dbg_hfe_addr (0x410): [31:30] rsv, [23:16] hfe2, [15:8] hfe1, [7:0] hfe0
+      - { domain: 63 , name: dbg_hfe_addr_rsv          , bits: [31, 30], width: 2 , desc: "reserved" }
+      - { domain: 63 , name: dbg_hfe_addr_hfe2         , bits: [23, 16], width: 8 , desc: "hfe2_table addr" }
+      - { domain: 63 , name: dbg_hfe_addr_hfe1         , bits: [15, 8], width: 8 , desc: "hfe1_table addr" }
+      - { domain: 63 , name: dbg_hfe_addr_hfe0         , bits: [7, 0], width: 8 , desc: "hfe0_table addr" }
+      # dbg_rcd0_hdrcal (0x414): [31:30] rsv, [29:24] shdr4_ofs, [23:18] shdr3_ofs, [17:12] shdr2_ofs, [11:6] shdr1_ofs, [5:0] shdr0_ofs
+      - { domain: 64 , name: dbg_rcd0_hdrcal_rsv       , bits: [31, 30], width: 2 , desc: "reserved" }
+      - { domain: 64 , name: dbg_rcd0_hdrcal_shdr4_ofs , bits: [29, 24], width: 6 , desc: "sub hdr4 offset" }
+      - { domain: 64 , name: dbg_rcd0_hdrcal_shdr3_ofs , bits: [23, 18], width: 6 , desc: "sub hdr3 offset" }
+      - { domain: 64 , name: dbg_rcd0_hdrcal_shdr2_ofs , bits: [17, 12], width: 6 , desc: "sub hdr2 offset" }
+      - { domain: 64 , name: dbg_rcd0_hdrcal_shdr1_ofs , bits: [11, 6], width: 6 , desc: "sub hdr1 offset" }
+      - { domain: 64 , name: dbg_rcd0_hdrcal_shdr0_ofs , bits: [5, 0], width: 6 , desc: "sub hdr0 offset" }
+      # dbg_rcd1_hdrcal (0x418): [31:30] rsv, [29:24] shdr9_ofs, [23:18] shdr8_ofs, [17:12] shdr7_ofs, [11:6] shdr6_ofs, [5:0] shdr5_ofs
+      - { domain: 65 , name: dbg_rcd1_hdrcal_rsv       , bits: [31, 30], width: 2 , desc: "reserved" }
+      - { domain: 65 , name: dbg_rcd1_hdrcal_shdr9_ofs , bits: [29, 24], width: 6 , desc: "sub hdr9 offset" }
+      - { domain: 65 , name: dbg_rcd1_hdrcal_shdr8_ofs , bits: [23, 18], width: 6 , desc: "sub hdr8 offset" }
+      - { domain: 65 , name: dbg_rcd1_hdrcal_shdr7_ofs , bits: [17, 12], width: 6 , desc: "sub hdr7 offset" }
+      - { domain: 65 , name: dbg_rcd1_hdrcal_shdr6_ofs , bits: [11, 6], width: 6 , desc: "sub hdr6 offset" }
+      - { domain: 65 , name: dbg_rcd1_hdrcal_shdr5_ofs , bits: [5, 0], width: 6 , desc: "sub hdr5 offset" }
+      # dbg_rcd2_hdrcal (0x41c): [31:12] rsv, [11:6] shdr11_ofs, [5:0] shdr10_ofs
+      - { domain: 66 , name: dbg_rcd2_hdrcal_rsv       , bits: [31, 12], width: 20, desc: "reserved" }
+      - { domain: 66 , name: dbg_rcd2_hdrcal_shdr11_ofs, bits: [11, 6], width: 6 , desc: "sub hdr11 offset" }
+      - { domain: 66 , name: dbg_rcd2_hdrcal_shdr10_ofs, bits: [5, 0], width: 6 , desc: "sub hdr10 offset" }
+      # dbg_ctn_info (0x420): array total:16 step:0x4
+      - { domain: 67 , name: "dbg_ctn_info[0]"           , bits: [31, 0], width: 32, desc: "ctn 结果（OCR 另见 en/val 字段，归属待确认）" }
+      - { domain: 68 , name: "dbg_ctn_info[1]"           , bits: [31, 0], width: 32, desc: "ctn 结果（OCR 另见 en/val 字段，归属待确认）" }
+      - { domain: 69 , name: "dbg_ctn_info[2]"           , bits: [31, 0], width: 32, desc: "ctn 结果（OCR 另见 en/val 字段，归属待确认）" }
+      - { domain: 70 , name: "dbg_ctn_info[3]"           , bits: [31, 0], width: 32, desc: "ctn 结果（OCR 另见 en/val 字段，归属待确认）" }
+      - { domain: 71 , name: "dbg_ctn_info[4]"           , bits: [31, 0], width: 32, desc: "ctn 结果（OCR 另见 en/val 字段，归属待确认）" }
+      - { domain: 72 , name: "dbg_ctn_info[5]"           , bits: [31, 0], width: 32, desc: "ctn 结果（OCR 另见 en/val 字段，归属待确认）" }
+      - { domain: 73 , name: "dbg_ctn_info[6]"           , bits: [31, 0], width: 32, desc: "ctn 结果（OCR 另见 en/val 字段，归属待确认）" }
+      - { domain: 74 , name: "dbg_ctn_info[7]"           , bits: [31, 0], width: 32, desc: "ctn 结果（OCR 另见 en/val 字段，归属待确认）" }
+      - { domain: 75 , name: "dbg_ctn_info[8]"           , bits: [31, 0], width: 32, desc: "ctn 结果（OCR 另见 en/val 字段，归属待确认）" }
+      - { domain: 76 , name: "dbg_ctn_info[9]"           , bits: [31, 0], width: 32, desc: "ctn 结果（OCR 另见 en/val 字段，归属待确认）" }
+      - { domain: 77 , name: "dbg_ctn_info[10]"          , bits: [31, 0], width: 32, desc: "ctn 结果（OCR 另见 en/val 字段，归属待确认）" }
+      - { domain: 78 , name: "dbg_ctn_info[11]"          , bits: [31, 0], width: 32, desc: "ctn 结果（OCR 另见 en/val 字段，归属待确认）" }
+      - { domain: 79 , name: "dbg_ctn_info[12]"          , bits: [31, 0], width: 32, desc: "ctn 结果（OCR 另见 en/val 字段，归属待确认）" }
+      - { domain: 80 , name: "dbg_ctn_info[13]"          , bits: [31, 0], width: 32, desc: "ctn 结果（OCR 另见 en/val 字段，归属待确认）" }
+      - { domain: 81 , name: "dbg_ctn_info[14]"          , bits: [31, 0], width: 32, desc: "ctn 结果（OCR 另见 en/val 字段，归属待确认）" }
+      - { domain: 82 , name: "dbg_ctn_info[15]"          , bits: [31, 0], width: 32, desc: "ctn 结果（OCR 另见 en/val 字段，归属待确认）" }
+      # dbg_fsm_sts (0x460): [31:4] rsv, [3:2] fr_cur_state, [1:0] fw_cur_state
+      - { domain: 83 , name: dbg_fsm_sts_rsv           , bits: [31, 4], width: 28, desc: "reserved" }
+      - { domain: 83 , name: dbg_fsm_sts_fr_cur_state  , bits: [3, 2], width: 2 , desc: "fr 状态机当前状态" }
+      - { domain: 83 , name: dbg_fsm_sts_fw_cur_state  , bits: [1, 0], width: 2 , desc: "fw 状态机当前状态" }
+      # dbg_bp_his (0x464): [31:3] rsv, [2:2] ppu2epars, [1:1] mpl2epars, [0:0] epars2epm
+      - { domain: 84 , name: dbg_bp_his_rsv            , bits: [31, 3], width: 29, desc: "reserved" }
+      - { domain: 84 , name: dbg_bp_his_ppu2epars      , bits: [2, 2], width: 1 , desc: "ppu 输入的反压历史记录" }
+      - { domain: 84 , name: dbg_bp_his_mpl2epars      , bits: [1, 1], width: 1 , desc: "mpl 输入的反压历史记录" }
+      - { domain: 84 , name: dbg_bp_his_epars2epm      , bits: [0, 0], width: 1 , desc: "输出给 epm 的反压历史记录" }
+      # dbg_bp_cur (0x468): [31:31] clr, [30:24] rsv, [2:2] ppu2epars, [1:1] mpl2epars, [0:0] epars2epm
+      - { domain: 85 , name: dbg_bp_cur_clr            , bits: [31, 31], width: 1 , desc: "历史最长反压 cycle 数清除" }
+      - { domain: 85 , name: dbg_bp_cur_rsv            , bits: [30, 24], width: 7 , desc: "reserved" }
+      - { domain: 85 , name: dbg_bp_cur_ppu2epars      , bits: [2, 2], width: 1 , desc: "ppu 输入的反压实时状态" }
+      - { domain: 85 , name: dbg_bp_cur_mpl2epars      , bits: [1, 1], width: 1 , desc: "mpl 输入的反压实时状态" }
+      - { domain: 85 , name: dbg_bp_cur_epars2epm      , bits: [0, 0], width: 1 , desc: "输出给 epm 的反压实时状态" }
+      # dbg_bp_max_cnt (0x46c): [31:31] vid, [30:24] rsv, [23:0] val
+      - { domain: 86 , name: "dbg_bp_max_cnt[0]_vid"     , bits: [31, 31], width: 1 , desc: "反压平均时长统计周期写有效" }
+      - { domain: 86 , name: "dbg_bp_max_cnt[0]_rsv"     , bits: [30, 24], width: 7 , desc: "reserved" }
+      - { domain: 86 , name: "dbg_bp_max_cnt[0]_val"     , bits: [23, 0], width: 24, desc: "历史最长反压 cycle 数" }
+      - { domain: 87 , name: "dbg_bp_max_cnt[1]_vid"     , bits: [31, 31], width: 1 , desc: "反压平均时长统计周期写有效" }
+      - { domain: 87 , name: "dbg_bp_max_cnt[1]_rsv"     , bits: [30, 24], width: 7 , desc: "reserved" }
+      - { domain: 87 , name: "dbg_bp_max_cnt[1]_val"     , bits: [23, 0], width: 24, desc: "历史最长反压 cycle 数" }
+      - { domain: 88 , name: "dbg_bp_max_cnt[2]_vid"     , bits: [31, 31], width: 1 , desc: "反压平均时长统计周期写有效" }
+      - { domain: 88 , name: "dbg_bp_max_cnt[2]_rsv"     , bits: [30, 24], width: 7 , desc: "reserved" }
+      - { domain: 88 , name: "dbg_bp_max_cnt[2]_val"     , bits: [23, 0], width: 24, desc: "历史最长反压 cycle 数" }
+      # dbg_bp_avg_prd (0x478): [31:16] rsv, [15:0] val
+      - { domain: 89 , name: "dbg_bp_avg_prd[0]_rsv"     , bits: [31, 16], width: 16, desc: "reserved" }
+      - { domain: 89 , name: "dbg_bp_avg_prd[0]_val"     , bits: [15, 0], width: 16, desc: "反压平均时长统计周期" }
+      - { domain: 90 , name: "dbg_bp_avg_prd[1]_rsv"     , bits: [31, 16], width: 16, desc: "reserved" }
+      - { domain: 90 , name: "dbg_bp_avg_prd[1]_val"     , bits: [15, 0], width: 16, desc: "反压平均时长统计周期" }
+      - { domain: 91 , name: "dbg_bp_avg_prd[2]_rsv"     , bits: [31, 16], width: 16, desc: "reserved" }
+      - { domain: 91 , name: "dbg_bp_avg_prd[2]_val"     , bits: [15, 0], width: 16, desc: "反压平均时长统计周期" }
+      # dbg_bp_avg_cnt (0x484): [31:16] rsv, [15:0] val
+      - { domain: 92 , name: "dbg_bp_avg_cnt[0]_rsv"     , bits: [31, 16], width: 16, desc: "reserved" }
+      - { domain: 92 , name: "dbg_bp_avg_cnt[0]_val"     , bits: [15, 0], width: 16, desc: "反压平均时长统计周期内反压 cycle" }
+      - { domain: 93 , name: "dbg_bp_avg_cnt[1]_rsv"     , bits: [31, 16], width: 16, desc: "reserved" }
+      - { domain: 93 , name: "dbg_bp_avg_cnt[1]_val"     , bits: [15, 0], width: 16, desc: "反压平均时长统计周期内反压 cycle" }
+      - { domain: 94 , name: "dbg_bp_avg_cnt[2]_rsv"     , bits: [31, 16], width: 16, desc: "reserved" }
+      - { domain: 94 , name: "dbg_bp_avg_cnt[2]_val"     , bits: [15, 0], width: 16, desc: "反压平均时长统计周期内反压 cycle" }
+      # dbg_bp_set (0x490): [31:1] rsv, [0:0] epars2epm
+      - { domain: 95 , name: dbg_bp_set_rsv            , bits: [31, 1], width: 31, desc: "reserved" }
+      - { domain: 95 , name: dbg_bp_set_epars2epm      , bits: [0, 0], width: 1 , desc: "强制拉起 epars2epm 反压" }
+      # dbg_bp_ign (0x494): [31:2] rsv, [1:1] ppu2epars, [0:0] mpl2epars
+      - { domain: 96 , name: dbg_bp_ign_rsv            , bits: [31, 2], width: 30, desc: "reserved" }
+      - { domain: 96 , name: dbg_bp_ign_ppu2epars      , bits: [1, 1], width: 1 , desc: "强制忽略 ppu2epars 反压" }
+      - { domain: 96 , name: dbg_bp_ign_mpl2epars      , bits: [0, 0], width: 1 , desc: "强制忽略 mpl2epars 反压" }
+      - { domain: 97 , name: dbg_sfr_miss_cnt          , bits: [31, 0], width: 32, desc: "sfr miss 计数" }
+      - { domain: 98 , name: pfg_eco_0                 , bits: [31, 0], width: 32, desc: "eco 配置" }
+      - { domain: 99 , name: pfg_eco_1                 , bits: [31, 0], width: 32, desc: "eco 配置" }
+      - { domain: 100, name: pfg_eco_2                 , bits: [31, 0], width: 32, desc: "eco 状态" }
+      - { domain: 101, name: pfg_eco_3                 , bits: [31, 0], width: 32, desc: "eco 状态" }
+      # dbg_epm_info (0x4ac): [31:6] rsv, [5:5] full, [4:0] egr_port
+      - { domain: 102, name: dbg_epm_info_rsv          , bits: [31, 6], width: 26, desc: "reserved" }
+      - { domain: 102, name: dbg_epm_info_full         , bits: [5, 5], width: 1 , desc: "epm 输入的 full 信号，需要看 trace 标记" }
+      - { domain: 102, name: dbg_epm_info_egr_port     , bits: [4, 0], width: 5 , desc: "epm 输入的 portid，需要看 trace 标记" }
+
+  # pedt register dump layout
+  # every register is a 32-bit u32; words appear in address order in the dump text
+  pedt_trace:
+    title: Pedt register trace
+    word_count: 214
+    fields:
+      # dbg_ctrl (0xaa8): [31:5] rsv, [4:4] rc_en, [3:2] trace_mode, [1:1] clr, [0:0] en
+      - { domain: 0  , name: dbg_ctrl_rsv                         , bits: [31, 5], width: 27, desc: "reserved" }
+      - { domain: 0  , name: dbg_ctrl_rc_en                       , bits: [4, 4], width: 1 , desc: "读使能（0/1: rc 寄存器软...）" }
+      - { domain: 0  , name: dbg_ctrl_trace_mode                  , bits: [3, 2], width: 2 , desc: "trace 模式：0: trace 带 trace 标记...，1: ...，2: trace 第一个...，3: trace 最后一个..." }
+      - { domain: 0  , name: dbg_ctrl_clr                         , bits: [1, 1], width: 1 , desc: "debug 清零，作用：(1) fifo status (2) trace 记录" }
+      - { domain: 0  , name: dbg_ctrl_en                          , bits: [0, 0], width: 1 , desc: "debug 使能，作用：(1) fifo status (2) 模块对外 (3) trace 记录" }
+      # dbg_mem_ecc_inj (0xaac): [31:31] err2, [30:30] err1, [29:8] rsv
+      - { domain: 1  , name: dbg_mem_ecc_inj_err2                 , bits: [31, 31], width: 1 , desc: "2bit ecc 注错" }
+      - { domain: 1  , name: dbg_mem_ecc_inj_err1                 , bits: [30, 30], width: 1 , desc: "1bit ecc 注错" }
+      - { domain: 1  , name: dbg_mem_ecc_inj_rsv                  , bits: [29, 8], width: 22, desc: "reserved" }
+      # dbg_mem_ecc_cnt (0xab0): [31:16] rsv, [15:8] err2, [7:0] err1
+      - { domain: 2  , name: dbg_mem_ecc_cnt_rsv                  , bits: [31, 16], width: 16, desc: "reserved" }
+      - { domain: 2  , name: dbg_mem_ecc_cnt_err2                 , bits: [15, 8], width: 8 , desc: "2bit ecc error count" }
+      - { domain: 2  , name: dbg_mem_ecc_cnt_err1                 , bits: [7, 0], width: 8 , desc: "1bit ecc error count" }
+      # dbg_mem_ecc1err_info (0xab4): [31:24] rsv, [23:16] mem_id, [15:0] addr
+      - { domain: 3  , name: dbg_mem_ecc1err_info_rsv             , bits: [31, 24], width: 8 , desc: "reserved" }
+      - { domain: 3  , name: dbg_mem_ecc1err_info_mem_id          , bits: [23, 16], width: 8 , desc: "1bit ecc error memory id" }
+      - { domain: 3  , name: dbg_mem_ecc1err_info_addr            , bits: [15, 0], width: 16, desc: "1bit ecc error memory addr" }
+      # dbg_mem_ecc2err_info (0xab8): [31:24] rsv, [23:16] mem_id, [15:0] addr
+      - { domain: 4  , name: dbg_mem_ecc2err_info_rsv             , bits: [31, 24], width: 8 , desc: "reserved" }
+      - { domain: 4  , name: dbg_mem_ecc2err_info_mem_id          , bits: [23, 16], width: 8 , desc: "2bit ecc error memory id" }
+      - { domain: 4  , name: dbg_mem_ecc2err_info_addr            , bits: [15, 0], width: 16, desc: "2bit ecc error memory addr" }
+      # dbg_zone_info_pfifo_sts (0xabc): [27:24] underflow_cnt, [23:20] overflow_cnt, [19:12] level_max, [11:11] rsv, [10:10] afull, [9:9] empty, [8:8] full, [7:0] level
+      - { domain: 5  , name: dbg_zone_info_pfifo_sts_underflow_cnt, bits: [27, 24], width: 4 , desc: "underflow 统计" }
+      - { domain: 5  , name: dbg_zone_info_pfifo_sts_overflow_cnt , bits: [23, 20], width: 4 , desc: "overflow 统计" }
+      - { domain: 5  , name: dbg_zone_info_pfifo_sts_level_max    , bits: [19, 12], width: 8 , desc: "水位最大值" }
+      - { domain: 5  , name: dbg_zone_info_pfifo_sts_rsv          , bits: [11, 11], width: 1 , desc: "reserved" }
+      - { domain: 5  , name: dbg_zone_info_pfifo_sts_afull        , bits: [10, 10], width: 1 , desc: "将满" }
+      - { domain: 5  , name: dbg_zone_info_pfifo_sts_empty        , bits: [9, 9], width: 1 , desc: "空标志" }
+      - { domain: 5  , name: dbg_zone_info_pfifo_sts_full         , bits: [8, 8], width: 1 , desc: "满标志" }
+      - { domain: 5  , name: dbg_zone_info_pfifo_sts_level        , bits: [7, 0], width: 8 , desc: "水位" }
+      # dbg_frm_hdr_fifo_sts (0xac0): [31:28] rsv, [27:24] underflow_cnt, [23:20] overflow_cnt, [19:12] level_max, [11:11] rsv, [10:10] afull, [9:9] empty, [8:8] full, [7:0] level
+      - { domain: 6  , name: dbg_frm_hdr_fifo_sts_rsv             , bits: [31, 28], width: 4 , desc: "reserved" }
+      - { domain: 6  , name: dbg_frm_hdr_fifo_sts_underflow_cnt   , bits: [27, 24], width: 4 , desc: "underflow 统计" }
+      - { domain: 6  , name: dbg_frm_hdr_fifo_sts_overflow_cnt    , bits: [23, 20], width: 4 , desc: "overflow 统计" }
+      - { domain: 6  , name: dbg_frm_hdr_fifo_sts_level_max       , bits: [19, 12], width: 8 , desc: "水位最大值" }
+      - { domain: 6  , name: dbg_frm_hdr_fifo_sts_rsv             , bits: [11, 11], width: 1 , desc: "reserved" }
+      - { domain: 6  , name: dbg_frm_hdr_fifo_sts_afull           , bits: [10, 10], width: 1 , desc: "将满" }
+      - { domain: 6  , name: dbg_frm_hdr_fifo_sts_empty           , bits: [9, 9], width: 1 , desc: "空标志" }
+      - { domain: 6  , name: dbg_frm_hdr_fifo_sts_full            , bits: [8, 8], width: 1 , desc: "满标志" }
+      - { domain: 6  , name: dbg_frm_hdr_fifo_sts_level           , bits: [7, 0], width: 8 , desc: "水位" }
+      # dbg_out_fifo_sts (0xac4): [31:24] rsv, [23:20] overflow_cnt, [19:18] rsv, [17:12] level_max, [11:10] rsv, [9:9] empty, [8:8] full, [7:6] level, [5:0] rsv
+      - { domain: 7  , name: dbg_out_fifo_sts_rsv                 , bits: [31, 24], width: 8 , desc: "reserved" }
+      - { domain: 7  , name: dbg_out_fifo_sts_overflow_cnt        , bits: [23, 20], width: 4 , desc: "overflow 统计" }
+      - { domain: 7  , name: dbg_out_fifo_sts_rsv                 , bits: [19, 18], width: 2 , desc: "reserved" }
+      - { domain: 7  , name: dbg_out_fifo_sts_level_max           , bits: [17, 12], width: 6 , desc: "水位最大值" }
+      - { domain: 7  , name: dbg_out_fifo_sts_rsv                 , bits: [11, 10], width: 2 , desc: "reserved" }
+      - { domain: 7  , name: dbg_out_fifo_sts_empty               , bits: [9, 9], width: 1 , desc: "空标志" }
+      - { domain: 7  , name: dbg_out_fifo_sts_full                , bits: [8, 8], width: 1 , desc: "满标志" }
+      - { domain: 7  , name: dbg_out_fifo_sts_level               , bits: [7, 6], width: 2 , desc: "水位" }
+      - { domain: 7  , name: dbg_out_fifo_sts_rsv                 , bits: [5, 0], width: 6 , desc: "reserved（OCR 显示 sts/ro-wo，待确认）" }
+      # dbg_fw_cmd_fifo_sts (0xac8): [31:24] rsv, [23:20] overflow_cnt, [19:18] rsv, [17:12] level_max, [11:10] rsv, [9:9] empty, [8:8] full, [7:6] rsv, [5:0] level
+      - { domain: 8  , name: dbg_fw_cmd_fifo_sts_rsv              , bits: [31, 24], width: 8 , desc: "reserved" }
+      - { domain: 8  , name: dbg_fw_cmd_fifo_sts_overflow_cnt     , bits: [23, 20], width: 4 , desc: "overflow 统计" }
+      - { domain: 8  , name: dbg_fw_cmd_fifo_sts_rsv              , bits: [19, 18], width: 2 , desc: "reserved" }
+      - { domain: 8  , name: dbg_fw_cmd_fifo_sts_level_max        , bits: [17, 12], width: 6 , desc: "水位最大值" }
+      - { domain: 8  , name: dbg_fw_cmd_fifo_sts_rsv              , bits: [11, 10], width: 2 , desc: "reserved" }
+      - { domain: 8  , name: dbg_fw_cmd_fifo_sts_empty            , bits: [9, 9], width: 1 , desc: "空标志" }
+      - { domain: 8  , name: dbg_fw_cmd_fifo_sts_full             , bits: [8, 8], width: 1 , desc: "满标志" }
+      - { domain: 8  , name: dbg_fw_cmd_fifo_sts_rsv              , bits: [7, 6], width: 2 , desc: "reserved" }
+      - { domain: 8  , name: dbg_fw_cmd_fifo_sts_level            , bits: [5, 0], width: 6 , desc: "水位" }
+      - { domain: 9  , name: dbg_ppu2pedt_cnt                     , bits: [31, 0], width: 32, desc: "计满翻转" }
+      - { domain: 10 , name: dbg_eparser2pedt_cnt                 , bits: [31, 0], width: 32, desc: "计满翻转" }
+      - { domain: 11 , name: dbg_pedt2copp_cnt                    , bits: [31, 0], width: 32, desc: "计满翻转" }
+      - { domain: 12 , name: dbg_copp2pedt_cnt                    , bits: [31, 0], width: 32, desc: "计满翻转" }
+      - { domain: 13 , name: dbg_pedt2meter_cnt                   , bits: [31, 0], width: 32, desc: "计满翻转" }
+      - { domain: 14 , name: dbg_meter2pedt_cnt                   , bits: [31, 0], width: 32, desc: "计满翻转" }
+      - { domain: 15 , name: dbg_pedt2sflow_cnt                   , bits: [31, 0], width: 32, desc: "计满翻转" }
+      - { domain: 16 , name: dbg_sflow2pedt_cnt                   , bits: [31, 0], width: 32, desc: "计满翻转" }
+      # dbg_pedt2cntpool_cnt (0xaec): [31:24] rsv, [23:0] val
+      - { domain: 17 , name: dbg_pedt2cntpool_cnt_rsv             , bits: [31, 24], width: 8 , desc: "reserved" }
+      - { domain: 17 , name: dbg_pedt2cntpool_cnt_val             , bits: [23, 0], width: 24, desc: "计满翻转" }
+      # dbg_pedt2epm_cnt (0xaf0): array total:2 step:0x4; [63:0] split into per-word u32 (lo..hi)
+      - { domain: 18 , name: dbg_pedt2epm_cnt_lo                  , bits: [31, 0], width: 32, desc: "计满翻转" }
+      - { domain: 19 , name: dbg_pedt2epm_cnt_hi                  , bits: [31, 0], width: 32, desc: "计满翻转" }
+      # trace_zone_rw_idx (0xaf8): [31:24] rsv, [23:16] z2, [15:8] z1, [7:0] z0
+      - { domain: 20 , name: trace_zone_rw_idx_rsv                , bits: [31, 24], width: 8 , desc: "reserved" }
+      - { domain: 20 , name: trace_zone_rw_idx_z2                 , bits: [23, 16], width: 8 , desc: "zone2 索引" }
+      - { domain: 20 , name: trace_zone_rw_idx_z1                 , bits: [15, 8], width: 8 , desc: "zone1 索引" }
+      - { domain: 20 , name: trace_zone_rw_idx_z0                 , bits: [7, 0], width: 8 , desc: "zone0 索引" }
+      # trace_zone_del_idx (0xafc): [31:24] rsv, [23:16] z2, [15:8] z1, [7:0] z0
+      - { domain: 21 , name: trace_zone_del_idx_rsv               , bits: [31, 24], width: 8 , desc: "reserved" }
+      - { domain: 21 , name: trace_zone_del_idx_z2                , bits: [23, 16], width: 8 , desc: "zone2 索引" }
+      - { domain: 21 , name: trace_zone_del_idx_z1                , bits: [15, 8], width: 8 , desc: "zone1 索引" }
+      - { domain: 21 , name: trace_zone_del_idx_z0                , bits: [7, 0], width: 8 , desc: "zone0 索引" }
+      # trace_zone_ins_idx (0xb00): [31:24] rsv, [23:16] z2, [15:8] z1, [7:0] z0
+      - { domain: 22 , name: trace_zone_ins_idx_rsv               , bits: [31, 24], width: 8 , desc: "reserved" }
+      - { domain: 22 , name: trace_zone_ins_idx_z2                , bits: [23, 16], width: 8 , desc: "zone2 索引" }
+      - { domain: 22 , name: trace_zone_ins_idx_z1                , bits: [15, 8], width: 8 , desc: "zone1 索引" }
+      - { domain: 22 , name: trace_zone_ins_idx_z0                , bits: [7, 0], width: 8 , desc: "zone0 索引" }
+      # trace_rw_engine_prof_idx (0xb04): [31:24] e3, [23:16] e2, [15:8] e1, [7:0] e0
+      - { domain: 23 , name: trace_rw_engine_prof_idx_e3          , bits: [31, 24], width: 8 , desc: "engine3 profile 索引" }
+      - { domain: 23 , name: trace_rw_engine_prof_idx_e2          , bits: [23, 16], width: 8 , desc: "engine2 profile 索引" }
+      - { domain: 23 , name: trace_rw_engine_prof_idx_e1          , bits: [15, 8], width: 8 , desc: "engine1 profile 索引" }
+      - { domain: 23 , name: trace_rw_engine_prof_idx_e0          , bits: [7, 0], width: 8 , desc: "engine0 profile 索引" }
+      # trace_ins_engine_prof_idx (0xb08): [31:24] e3, [23:16] e2, [15:8] e1, [7:0] e0
+      - { domain: 24 , name: trace_ins_engine_prof_idx_e3         , bits: [31, 24], width: 8 , desc: "engine3 profile 索引" }
+      - { domain: 24 , name: trace_ins_engine_prof_idx_e2         , bits: [23, 16], width: 8 , desc: "engine2 profile 索引" }
+      - { domain: 24 , name: trace_ins_engine_prof_idx_e1         , bits: [15, 8], width: 8 , desc: "engine1 profile 索引" }
+      - { domain: 24 , name: trace_ins_engine_prof_idx_e0         , bits: [7, 0], width: 8 , desc: "engine0 profile 索引" }
+      # trace_csm_engine_prof_idx (0xb0c): [31:16] rsv, [15:8] e1, [7:0] e0
+      - { domain: 25 , name: trace_csm_engine_prof_idx_rsv        , bits: [31, 16], width: 16, desc: "reserved" }
+      - { domain: 25 , name: trace_csm_engine_prof_idx_e1         , bits: [15, 8], width: 8 , desc: "engine1 profile 索引" }
+      - { domain: 25 , name: trace_csm_engine_prof_idx_e0         , bits: [7, 0], width: 8 , desc: "engine0 profile 索引" }
+      # trace_csm_hdr_prof_idx (0xb10): [31:24] rsv, [23:16] h2, [15:8] h1, [7:0] h0
+      - { domain: 26 , name: trace_csm_hdr_prof_idx_rsv           , bits: [31, 24], width: 8 , desc: "reserved" }
+      - { domain: 26 , name: trace_csm_hdr_prof_idx_h2            , bits: [23, 16], width: 8 , desc: "hdr2 profile 索引" }
+      - { domain: 26 , name: trace_csm_hdr_prof_idx_h1            , bits: [15, 8], width: 8 , desc: "hdr1 profile 索引" }
+      - { domain: 26 , name: trace_csm_hdr_prof_idx_h0            , bits: [7, 0], width: 8 , desc: "hdr0 profile 索引" }
+      # trace_cmd_tcam_u16_key (0xb14): [31:16] rsv, [15:0] val
+      - { domain: 27 , name: trace_cmd_tcam_u16_key_rsv           , bits: [31, 16], width: 16, desc: "reserved" }
+      - { domain: 27 , name: trace_cmd_tcam_u16_key_val           , bits: [15, 0], width: 16, desc: "tcam u16 key" }
+      # trace_cmd_tcam_u8_key (0xb18): [31:8] rsv, [7:0] val
+      - { domain: 28 , name: trace_cmd_tcam_u8_key_rsv            , bits: [31, 8], width: 24, desc: "reserved" }
+      - { domain: 28 , name: trace_cmd_tcam_u8_key_val            , bits: [7, 0], width: 8 , desc: "tcam u8 key" }
+      - { domain: 29 , name: trace_cmd_tcam_u4_key                , bits: [31, 0], width: 32, desc: "tcam u4 key" }
+      # trace_fp_bus_data (0xb20): array total:8 step:0x4
+      - { domain: 30 , name: "trace_fp_bus_data[0]"                 , bits: [31, 0], width: 32, desc: "fp bus 数据" }
+      - { domain: 31 , name: "trace_fp_bus_data[1]"                 , bits: [31, 0], width: 32, desc: "fp bus 数据" }
+      - { domain: 32 , name: "trace_fp_bus_data[2]"                 , bits: [31, 0], width: 32, desc: "fp bus 数据" }
+      - { domain: 33 , name: "trace_fp_bus_data[3]"                 , bits: [31, 0], width: 32, desc: "fp bus 数据" }
+      - { domain: 34 , name: "trace_fp_bus_data[4]"                 , bits: [31, 0], width: 32, desc: "fp bus 数据" }
+      - { domain: 35 , name: "trace_fp_bus_data[5]"                 , bits: [31, 0], width: 32, desc: "fp bus 数据" }
+      - { domain: 36 , name: "trace_fp_bus_data[6]"                 , bits: [31, 0], width: 32, desc: "fp bus 数据" }
+      - { domain: 37 , name: "trace_fp_bus_data[7]"                 , bits: [31, 0], width: 32, desc: "fp bus 数据" }
+      - { domain: 38 , name: trace_cls_key                        , bits: [7, 0], width: 8 , desc: "cls key" }
+      # trace_hdr_igr_ofs (0xb44): array total:8 step:0x4
+      - { domain: 39 , name: "trace_hdr_igr_ofs[0]"                 , bits: [31, 0], width: 32, desc: "入向 hdr offset" }
+      - { domain: 40 , name: "trace_hdr_igr_ofs[1]"                 , bits: [31, 0], width: 32, desc: "入向 hdr offset" }
+      - { domain: 41 , name: "trace_hdr_igr_ofs[2]"                 , bits: [31, 0], width: 32, desc: "入向 hdr offset" }
+      - { domain: 42 , name: "trace_hdr_igr_ofs[3]"                 , bits: [31, 0], width: 32, desc: "入向 hdr offset" }
+      - { domain: 43 , name: "trace_hdr_igr_ofs[4]"                 , bits: [31, 0], width: 32, desc: "入向 hdr offset" }
+      - { domain: 44 , name: "trace_hdr_igr_ofs[5]"                 , bits: [31, 0], width: 32, desc: "入向 hdr offset" }
+      - { domain: 45 , name: "trace_hdr_igr_ofs[6]"                 , bits: [31, 0], width: 32, desc: "入向 hdr offset" }
+      - { domain: 46 , name: "trace_hdr_igr_ofs[7]"                 , bits: [31, 0], width: 32, desc: "入向 hdr offset" }
+      # trace_hdr_egr_ofs (0xb64): array total:8 step:0x4
+      - { domain: 47 , name: "trace_hdr_egr_ofs[0]"                 , bits: [31, 0], width: 32, desc: "出向 hdr offset" }
+      - { domain: 48 , name: "trace_hdr_egr_ofs[1]"                 , bits: [31, 0], width: 32, desc: "出向 hdr offset" }
+      - { domain: 49 , name: "trace_hdr_egr_ofs[2]"                 , bits: [31, 0], width: 32, desc: "出向 hdr offset" }
+      - { domain: 50 , name: "trace_hdr_egr_ofs[3]"                 , bits: [31, 0], width: 32, desc: "出向 hdr offset" }
+      - { domain: 51 , name: "trace_hdr_egr_ofs[4]"                 , bits: [31, 0], width: 32, desc: "出向 hdr offset" }
+      - { domain: 52 , name: "trace_hdr_egr_ofs[5]"                 , bits: [31, 0], width: 32, desc: "出向 hdr offset" }
+      - { domain: 53 , name: "trace_hdr_egr_ofs[6]"                 , bits: [31, 0], width: 32, desc: "出向 hdr offset" }
+      - { domain: 54 , name: "trace_hdr_egr_ofs[7]"                 , bits: [31, 0], width: 32, desc: "出向 hdr offset" }
+      # trace_rw_cmd (0xb84): [31:31] vld, [30:16] rsv, [15:8] ofs, [7:6] rsv, [5:0] len
+      - { domain: 55 , name: "trace_rw_cmd[0]_vld"                  , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 55 , name: "trace_rw_cmd[0]_rsv"                  , bits: [30, 16], width: 15, desc: "reserved" }
+      - { domain: 55 , name: "trace_rw_cmd[0]_ofs"                  , bits: [15, 8], width: 8 , desc: "offset" }
+      - { domain: 55 , name: "trace_rw_cmd[0]_rsv"                  , bits: [7, 6], width: 2 , desc: "reserved" }
+      - { domain: 55 , name: "trace_rw_cmd[0]_len"                  , bits: [5, 0], width: 6 , desc: "长度" }
+      - { domain: 56 , name: "trace_rw_cmd[1]_vld"                  , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 56 , name: "trace_rw_cmd[1]_rsv"                  , bits: [30, 16], width: 15, desc: "reserved" }
+      - { domain: 56 , name: "trace_rw_cmd[1]_ofs"                  , bits: [15, 8], width: 8 , desc: "offset" }
+      - { domain: 56 , name: "trace_rw_cmd[1]_rsv"                  , bits: [7, 6], width: 2 , desc: "reserved" }
+      - { domain: 56 , name: "trace_rw_cmd[1]_len"                  , bits: [5, 0], width: 6 , desc: "长度" }
+      - { domain: 57 , name: "trace_rw_cmd[2]_vld"                  , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 57 , name: "trace_rw_cmd[2]_rsv"                  , bits: [30, 16], width: 15, desc: "reserved" }
+      - { domain: 57 , name: "trace_rw_cmd[2]_ofs"                  , bits: [15, 8], width: 8 , desc: "offset" }
+      - { domain: 57 , name: "trace_rw_cmd[2]_rsv"                  , bits: [7, 6], width: 2 , desc: "reserved" }
+      - { domain: 57 , name: "trace_rw_cmd[2]_len"                  , bits: [5, 0], width: 6 , desc: "长度" }
+      - { domain: 58 , name: "trace_rw_cmd[3]_vld"                  , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 58 , name: "trace_rw_cmd[3]_rsv"                  , bits: [30, 16], width: 15, desc: "reserved" }
+      - { domain: 58 , name: "trace_rw_cmd[3]_ofs"                  , bits: [15, 8], width: 8 , desc: "offset" }
+      - { domain: 58 , name: "trace_rw_cmd[3]_rsv"                  , bits: [7, 6], width: 2 , desc: "reserved" }
+      - { domain: 58 , name: "trace_rw_cmd[3]_len"                  , bits: [5, 0], width: 6 , desc: "长度" }
+      # trace_rw_bitmap (0xb94): array total:4 step:0x4
+      - { domain: 59 , name: "trace_rw_bitmap[0]"                   , bits: [15, 0], width: 16, desc: "bitmap（每 bit 代表 2 字节）" }
+      - { domain: 60 , name: "trace_rw_bitmap[1]"                   , bits: [15, 0], width: 16, desc: "bitmap（每 bit 代表 2 字节）" }
+      - { domain: 61 , name: "trace_rw_bitmap[2]"                   , bits: [15, 0], width: 16, desc: "bitmap（每 bit 代表 2 字节）" }
+      - { domain: 62 , name: "trace_rw_bitmap[3]"                   , bits: [15, 0], width: 16, desc: "bitmap（每 bit 代表 2 字节）" }
+      # trace_rw0_data (0xba4): array total:4 step:0x4
+      - { domain: 63 , name: "trace_rw0_data[0]"                    , bits: [31, 0], width: 32, desc: "rw0 数据" }
+      - { domain: 64 , name: "trace_rw0_data[1]"                    , bits: [31, 0], width: 32, desc: "rw0 数据" }
+      - { domain: 65 , name: "trace_rw0_data[2]"                    , bits: [31, 0], width: 32, desc: "rw0 数据" }
+      - { domain: 66 , name: "trace_rw0_data[3]"                    , bits: [31, 0], width: 32, desc: "rw0 数据" }
+      # trace_rw1_data (0xbb4): array total:4 step:0x4
+      - { domain: 67 , name: "trace_rw1_data[0]"                    , bits: [31, 0], width: 32, desc: "rw1 数据" }
+      - { domain: 68 , name: "trace_rw1_data[1]"                    , bits: [31, 0], width: 32, desc: "rw1 数据" }
+      - { domain: 69 , name: "trace_rw1_data[2]"                    , bits: [31, 0], width: 32, desc: "rw1 数据" }
+      - { domain: 70 , name: "trace_rw1_data[3]"                    , bits: [31, 0], width: 32, desc: "rw1 数据" }
+      # trace_rw2_data (0xbc4): array total:4 step:0x4
+      - { domain: 71 , name: "trace_rw2_data[0]"                    , bits: [31, 0], width: 32, desc: "rw2 数据" }
+      - { domain: 72 , name: "trace_rw2_data[1]"                    , bits: [31, 0], width: 32, desc: "rw2 数据" }
+      - { domain: 73 , name: "trace_rw2_data[2]"                    , bits: [31, 0], width: 32, desc: "rw2 数据" }
+      - { domain: 74 , name: "trace_rw2_data[3]"                    , bits: [31, 0], width: 32, desc: "rw2 数据" }
+      # trace_rw3_data (0xbd4): array total:4 step:0x4
+      - { domain: 75 , name: "trace_rw3_data[0]"                    , bits: [31, 0], width: 32, desc: "rw3 数据" }
+      - { domain: 76 , name: "trace_rw3_data[1]"                    , bits: [31, 0], width: 32, desc: "rw3 数据" }
+      - { domain: 77 , name: "trace_rw3_data[2]"                    , bits: [31, 0], width: 32, desc: "rw3 数据" }
+      - { domain: 78 , name: "trace_rw3_data[3]"                    , bits: [31, 0], width: 32, desc: "rw3 数据" }
+      # trace_del_cmd (0xbe4): [31:31] vld, [30:15] rsv, [14:8] ofs, [7:7] rsv, [6:0] len
+      - { domain: 79 , name: "trace_del_cmd[0]_vld"                 , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 79 , name: "trace_del_cmd[0]_rsv"                 , bits: [30, 15], width: 16, desc: "reserved" }
+      - { domain: 79 , name: "trace_del_cmd[0]_ofs"                 , bits: [14, 8], width: 7 , desc: "offset" }
+      - { domain: 79 , name: "trace_del_cmd[0]_rsv"                 , bits: [7, 7], width: 1 , desc: "reserved" }
+      - { domain: 79 , name: "trace_del_cmd[0]_len"                 , bits: [6, 0], width: 7 , desc: "长度" }
+      - { domain: 80 , name: "trace_del_cmd[1]_vld"                 , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 80 , name: "trace_del_cmd[1]_rsv"                 , bits: [30, 15], width: 16, desc: "reserved" }
+      - { domain: 80 , name: "trace_del_cmd[1]_ofs"                 , bits: [14, 8], width: 7 , desc: "offset" }
+      - { domain: 80 , name: "trace_del_cmd[1]_rsv"                 , bits: [7, 7], width: 1 , desc: "reserved" }
+      - { domain: 80 , name: "trace_del_cmd[1]_len"                 , bits: [6, 0], width: 7 , desc: "长度" }
+      - { domain: 81 , name: "trace_del_cmd[2]_vld"                 , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 81 , name: "trace_del_cmd[2]_rsv"                 , bits: [30, 15], width: 16, desc: "reserved" }
+      - { domain: 81 , name: "trace_del_cmd[2]_ofs"                 , bits: [14, 8], width: 7 , desc: "offset" }
+      - { domain: 81 , name: "trace_del_cmd[2]_rsv"                 , bits: [7, 7], width: 1 , desc: "reserved" }
+      - { domain: 81 , name: "trace_del_cmd[2]_len"                 , bits: [6, 0], width: 7 , desc: "长度" }
+      - { domain: 82 , name: "trace_del_cmd[3]_vld"                 , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 82 , name: "trace_del_cmd[3]_rsv"                 , bits: [30, 15], width: 16, desc: "reserved" }
+      - { domain: 82 , name: "trace_del_cmd[3]_ofs"                 , bits: [14, 8], width: 7 , desc: "offset" }
+      - { domain: 82 , name: "trace_del_cmd[3]_rsv"                 , bits: [7, 7], width: 1 , desc: "reserved" }
+      - { domain: 82 , name: "trace_del_cmd[3]_len"                 , bits: [6, 0], width: 7 , desc: "长度" }
+      - { domain: 83 , name: "trace_del_cmd[4]_vld"                 , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 83 , name: "trace_del_cmd[4]_rsv"                 , bits: [30, 15], width: 16, desc: "reserved" }
+      - { domain: 83 , name: "trace_del_cmd[4]_ofs"                 , bits: [14, 8], width: 7 , desc: "offset" }
+      - { domain: 83 , name: "trace_del_cmd[4]_rsv"                 , bits: [7, 7], width: 1 , desc: "reserved" }
+      - { domain: 83 , name: "trace_del_cmd[4]_len"                 , bits: [6, 0], width: 7 , desc: "长度" }
+      - { domain: 84 , name: "trace_del_cmd[5]_vld"                 , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 84 , name: "trace_del_cmd[5]_rsv"                 , bits: [30, 15], width: 16, desc: "reserved" }
+      - { domain: 84 , name: "trace_del_cmd[5]_ofs"                 , bits: [14, 8], width: 7 , desc: "offset" }
+      - { domain: 84 , name: "trace_del_cmd[5]_rsv"                 , bits: [7, 7], width: 1 , desc: "reserved" }
+      - { domain: 84 , name: "trace_del_cmd[5]_len"                 , bits: [6, 0], width: 7 , desc: "长度" }
+      # trace_ins_cmd (0xbfc): [31:31] vld, [30:21] rsv, [20:16] hdr_id, [15:15] rsv, [14:8] ofs, [7:5] rsv, [4:0] len
+      - { domain: 85 , name: "trace_ins_cmd[0]_vld"                 , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 85 , name: "trace_ins_cmd[0]_rsv"                 , bits: [30, 21], width: 10, desc: "reserved" }
+      - { domain: 85 , name: "trace_ins_cmd[0]_hdr_id"              , bits: [20, 16], width: 5 , desc: "hdr id" }
+      - { domain: 85 , name: "trace_ins_cmd[0]_rsv"                 , bits: [15, 15], width: 1 , desc: "reserved" }
+      - { domain: 85 , name: "trace_ins_cmd[0]_ofs"                 , bits: [14, 8], width: 7 , desc: "offset" }
+      - { domain: 85 , name: "trace_ins_cmd[0]_rsv"                 , bits: [7, 5], width: 3 , desc: "reserved" }
+      - { domain: 85 , name: "trace_ins_cmd[0]_len"                 , bits: [4, 0], width: 5 , desc: "长度" }
+      - { domain: 86 , name: "trace_ins_cmd[1]_vld"                 , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 86 , name: "trace_ins_cmd[1]_rsv"                 , bits: [30, 21], width: 10, desc: "reserved" }
+      - { domain: 86 , name: "trace_ins_cmd[1]_hdr_id"              , bits: [20, 16], width: 5 , desc: "hdr id" }
+      - { domain: 86 , name: "trace_ins_cmd[1]_rsv"                 , bits: [15, 15], width: 1 , desc: "reserved" }
+      - { domain: 86 , name: "trace_ins_cmd[1]_ofs"                 , bits: [14, 8], width: 7 , desc: "offset" }
+      - { domain: 86 , name: "trace_ins_cmd[1]_rsv"                 , bits: [7, 5], width: 3 , desc: "reserved" }
+      - { domain: 86 , name: "trace_ins_cmd[1]_len"                 , bits: [4, 0], width: 5 , desc: "长度" }
+      - { domain: 87 , name: "trace_ins_cmd[2]_vld"                 , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 87 , name: "trace_ins_cmd[2]_rsv"                 , bits: [30, 21], width: 10, desc: "reserved" }
+      - { domain: 87 , name: "trace_ins_cmd[2]_hdr_id"              , bits: [20, 16], width: 5 , desc: "hdr id" }
+      - { domain: 87 , name: "trace_ins_cmd[2]_rsv"                 , bits: [15, 15], width: 1 , desc: "reserved" }
+      - { domain: 87 , name: "trace_ins_cmd[2]_ofs"                 , bits: [14, 8], width: 7 , desc: "offset" }
+      - { domain: 87 , name: "trace_ins_cmd[2]_rsv"                 , bits: [7, 5], width: 3 , desc: "reserved" }
+      - { domain: 87 , name: "trace_ins_cmd[2]_len"                 , bits: [4, 0], width: 5 , desc: "长度" }
+      - { domain: 88 , name: "trace_ins_cmd[3]_vld"                 , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 88 , name: "trace_ins_cmd[3]_rsv"                 , bits: [30, 21], width: 10, desc: "reserved" }
+      - { domain: 88 , name: "trace_ins_cmd[3]_hdr_id"              , bits: [20, 16], width: 5 , desc: "hdr id" }
+      - { domain: 88 , name: "trace_ins_cmd[3]_rsv"                 , bits: [15, 15], width: 1 , desc: "reserved" }
+      - { domain: 88 , name: "trace_ins_cmd[3]_ofs"                 , bits: [14, 8], width: 7 , desc: "offset" }
+      - { domain: 88 , name: "trace_ins_cmd[3]_rsv"                 , bits: [7, 5], width: 3 , desc: "reserved" }
+      - { domain: 88 , name: "trace_ins_cmd[3]_len"                 , bits: [4, 0], width: 5 , desc: "长度" }
+      # trace_ins_bitmap (0xc0c): array total:4 step:0x4
+      - { domain: 89 , name: "trace_ins_bitmap[0]"                  , bits: [15, 0], width: 16, desc: "bitmap（每 bit 代表 2 字节）" }
+      - { domain: 90 , name: "trace_ins_bitmap[1]"                  , bits: [15, 0], width: 16, desc: "bitmap（每 bit 代表 2 字节）" }
+      - { domain: 91 , name: "trace_ins_bitmap[2]"                  , bits: [15, 0], width: 16, desc: "bitmap（每 bit 代表 2 字节）" }
+      - { domain: 92 , name: "trace_ins_bitmap[3]"                  , bits: [15, 0], width: 16, desc: "bitmap（每 bit 代表 2 字节）" }
+      # trace_ins0_data (0xc1c): array total:4 step:0x4
+      - { domain: 93 , name: "trace_ins0_data[0]"                   , bits: [31, 0], width: 32, desc: "ins0 数据" }
+      - { domain: 94 , name: "trace_ins0_data[1]"                   , bits: [31, 0], width: 32, desc: "ins0 数据" }
+      - { domain: 95 , name: "trace_ins0_data[2]"                   , bits: [31, 0], width: 32, desc: "ins0 数据" }
+      - { domain: 96 , name: "trace_ins0_data[3]"                   , bits: [31, 0], width: 32, desc: "ins0 数据" }
+      # trace_ins1_data (0xc2c): array total:4 step:0x4
+      - { domain: 97 , name: "trace_ins1_data[0]"                   , bits: [31, 0], width: 32, desc: "ins1 数据" }
+      - { domain: 98 , name: "trace_ins1_data[1]"                   , bits: [31, 0], width: 32, desc: "ins1 数据" }
+      - { domain: 99 , name: "trace_ins1_data[2]"                   , bits: [31, 0], width: 32, desc: "ins1 数据" }
+      - { domain: 100, name: "trace_ins1_data[3]"                   , bits: [31, 0], width: 32, desc: "ins1 数据" }
+      # trace_ins2_data (0xc3c): array total:8 step:0x4
+      - { domain: 101, name: "trace_ins2_data[0]"                   , bits: [31, 0], width: 32, desc: "ins2 数据" }
+      - { domain: 102, name: "trace_ins2_data[1]"                   , bits: [31, 0], width: 32, desc: "ins2 数据" }
+      - { domain: 103, name: "trace_ins2_data[2]"                   , bits: [31, 0], width: 32, desc: "ins2 数据" }
+      - { domain: 104, name: "trace_ins2_data[3]"                   , bits: [31, 0], width: 32, desc: "ins2 数据" }
+      - { domain: 105, name: "trace_ins2_data[4]"                   , bits: [31, 0], width: 32, desc: "ins2 数据" }
+      - { domain: 106, name: "trace_ins2_data[5]"                   , bits: [31, 0], width: 32, desc: "ins2 数据" }
+      - { domain: 107, name: "trace_ins2_data[6]"                   , bits: [31, 0], width: 32, desc: "ins2 数据" }
+      - { domain: 108, name: "trace_ins2_data[7]"                   , bits: [31, 0], width: 32, desc: "ins2 数据" }
+      # trace_ins3_data (0xc5c): array total:8 step:0x4
+      - { domain: 109, name: "trace_ins3_data[0]"                   , bits: [31, 0], width: 32, desc: "ins3 数据" }
+      - { domain: 110, name: "trace_ins3_data[1]"                   , bits: [31, 0], width: 32, desc: "ins3 数据" }
+      - { domain: 111, name: "trace_ins3_data[2]"                   , bits: [31, 0], width: 32, desc: "ins3 数据" }
+      - { domain: 112, name: "trace_ins3_data[3]"                   , bits: [31, 0], width: 32, desc: "ins3 数据" }
+      - { domain: 113, name: "trace_ins3_data[4]"                   , bits: [31, 0], width: 32, desc: "ins3 数据" }
+      - { domain: 114, name: "trace_ins3_data[5]"                   , bits: [31, 0], width: 32, desc: "ins3 数据" }
+      - { domain: 115, name: "trace_ins3_data[6]"                   , bits: [31, 0], width: 32, desc: "ins3 数据" }
+      - { domain: 116, name: "trace_ins3_data[7]"                   , bits: [31, 0], width: 32, desc: "ins3 数据" }
+      # trace_uplen_cmd (0xc7c): [31:31] vid, [30:17] rsv, [16:16] mode, [15:15] rsv, [14:8] igr_ofs, [7:0] rsv
+      - { domain: 117, name: "trace_uplen_cmd[0]_vid"               , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 117, name: "trace_uplen_cmd[0]_rsv"               , bits: [30, 17], width: 14, desc: "reserved" }
+      - { domain: 117, name: "trace_uplen_cmd[0]_mode"              , bits: [16, 16], width: 1 , desc: "模式" }
+      - { domain: 117, name: "trace_uplen_cmd[0]_rsv"               , bits: [15, 15], width: 1 , desc: "reserved" }
+      - { domain: 117, name: "trace_uplen_cmd[0]_igr_ofs"           , bits: [14, 8], width: 7 , desc: "入向 offset" }
+      - { domain: 117, name: "trace_uplen_cmd[0]_rsv"               , bits: [7, 0], width: 8 , desc: "reserved" }
+      - { domain: 118, name: "trace_uplen_cmd[1]_vid"               , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 118, name: "trace_uplen_cmd[1]_rsv"               , bits: [30, 17], width: 14, desc: "reserved" }
+      - { domain: 118, name: "trace_uplen_cmd[1]_mode"              , bits: [16, 16], width: 1 , desc: "模式" }
+      - { domain: 118, name: "trace_uplen_cmd[1]_rsv"               , bits: [15, 15], width: 1 , desc: "reserved" }
+      - { domain: 118, name: "trace_uplen_cmd[1]_igr_ofs"           , bits: [14, 8], width: 7 , desc: "入向 offset" }
+      - { domain: 118, name: "trace_uplen_cmd[1]_rsv"               , bits: [7, 0], width: 8 , desc: "reserved" }
+      - { domain: 119, name: "trace_uplen_cmd[2]_vid"               , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 119, name: "trace_uplen_cmd[2]_rsv"               , bits: [30, 17], width: 14, desc: "reserved" }
+      - { domain: 119, name: "trace_uplen_cmd[2]_mode"              , bits: [16, 16], width: 1 , desc: "模式" }
+      - { domain: 119, name: "trace_uplen_cmd[2]_rsv"               , bits: [15, 15], width: 1 , desc: "reserved" }
+      - { domain: 119, name: "trace_uplen_cmd[2]_igr_ofs"           , bits: [14, 8], width: 7 , desc: "入向 offset" }
+      - { domain: 119, name: "trace_uplen_cmd[2]_rsv"               , bits: [7, 0], width: 8 , desc: "reserved" }
+      - { domain: 120, name: "trace_uplen_cmd[3]_vid"               , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 120, name: "trace_uplen_cmd[3]_rsv"               , bits: [30, 17], width: 14, desc: "reserved" }
+      - { domain: 120, name: "trace_uplen_cmd[3]_mode"              , bits: [16, 16], width: 1 , desc: "模式" }
+      - { domain: 120, name: "trace_uplen_cmd[3]_rsv"               , bits: [15, 15], width: 1 , desc: "reserved" }
+      - { domain: 120, name: "trace_uplen_cmd[3]_igr_ofs"           , bits: [14, 8], width: 7 , desc: "入向 offset" }
+      - { domain: 120, name: "trace_uplen_cmd[3]_rsv"               , bits: [7, 0], width: 8 , desc: "reserved" }
+      # trace_uplen_new_len (0xc8c): [31:15] rsv, [14:8] igr_ofs, [7:7] rsv, [6:0] egr_ofs
+      - { domain: 121, name: "trace_uplen_new_len[0]_rsv"           , bits: [31, 15], width: 17, desc: "reserved（推断，待确认）" }
+      - { domain: 121, name: "trace_uplen_new_len[0]_igr_ofs"       , bits: [14, 8], width: 7 , desc: "入向 offset" }
+      - { domain: 121, name: "trace_uplen_new_len[0]_rsv"           , bits: [7, 7], width: 1 , desc: "reserved" }
+      - { domain: 121, name: "trace_uplen_new_len[0]_egr_ofs"       , bits: [6, 0], width: 7 , desc: "出向 offset" }
+      - { domain: 122, name: "trace_uplen_new_len[1]_rsv"           , bits: [31, 15], width: 17, desc: "reserved（推断，待确认）" }
+      - { domain: 122, name: "trace_uplen_new_len[1]_igr_ofs"       , bits: [14, 8], width: 7 , desc: "入向 offset" }
+      - { domain: 122, name: "trace_uplen_new_len[1]_rsv"           , bits: [7, 7], width: 1 , desc: "reserved" }
+      - { domain: 122, name: "trace_uplen_new_len[1]_egr_ofs"       , bits: [6, 0], width: 7 , desc: "出向 offset" }
+      - { domain: 123, name: "trace_uplen_new_len[2]_rsv"           , bits: [31, 15], width: 17, desc: "reserved（推断，待确认）" }
+      - { domain: 123, name: "trace_uplen_new_len[2]_igr_ofs"       , bits: [14, 8], width: 7 , desc: "入向 offset" }
+      - { domain: 123, name: "trace_uplen_new_len[2]_rsv"           , bits: [7, 7], width: 1 , desc: "reserved" }
+      - { domain: 123, name: "trace_uplen_new_len[2]_egr_ofs"       , bits: [6, 0], width: 7 , desc: "出向 offset" }
+      - { domain: 124, name: "trace_uplen_new_len[3]_rsv"           , bits: [31, 15], width: 17, desc: "reserved（推断，待确认）" }
+      - { domain: 124, name: "trace_uplen_new_len[3]_igr_ofs"       , bits: [14, 8], width: 7 , desc: "入向 offset" }
+      - { domain: 124, name: "trace_uplen_new_len[3]_rsv"           , bits: [7, 7], width: 1 , desc: "reserved" }
+      - { domain: 124, name: "trace_uplen_new_len[3]_egr_ofs"       , bits: [6, 0], width: 7 , desc: "出向 offset" }
+      # trace_igr_hdr_sum (0xc9c): [31:16] rsv, [15:0] val
+      - { domain: 125, name: "trace_igr_hdr_sum[0]_rsv"             , bits: [31, 16], width: 16, desc: "reserved" }
+      - { domain: 125, name: "trace_igr_hdr_sum[0]_val"             , bits: [15, 0], width: 16, desc: "入向 hdr 统计和" }
+      - { domain: 126, name: "trace_igr_hdr_sum[1]_rsv"             , bits: [31, 16], width: 16, desc: "reserved" }
+      - { domain: 126, name: "trace_igr_hdr_sum[1]_val"             , bits: [15, 0], width: 16, desc: "入向 hdr 统计和" }
+      - { domain: 127, name: "trace_igr_hdr_sum[2]_rsv"             , bits: [31, 16], width: 16, desc: "reserved" }
+      - { domain: 127, name: "trace_igr_hdr_sum[2]_val"             , bits: [15, 0], width: 16, desc: "入向 hdr 统计和" }
+      # trace_egr_hdr_sum (0xca8): [31:16] rsv, [15:0] val
+      - { domain: 128, name: "trace_egr_hdr_sum[0]_rsv"             , bits: [31, 16], width: 16, desc: "reserved" }
+      - { domain: 128, name: "trace_egr_hdr_sum[0]_val"             , bits: [15, 0], width: 16, desc: "出向 hdr 统计和" }
+      - { domain: 129, name: "trace_egr_hdr_sum[1]_rsv"             , bits: [31, 16], width: 16, desc: "reserved" }
+      - { domain: 129, name: "trace_egr_hdr_sum[1]_val"             , bits: [15, 0], width: 16, desc: "出向 hdr 统计和" }
+      - { domain: 130, name: "trace_egr_hdr_sum[2]_rsv"             , bits: [31, 16], width: 16, desc: "reserved" }
+      - { domain: 130, name: "trace_egr_hdr_sum[2]_val"             , bits: [15, 0], width: 16, desc: "出向 hdr 统计和" }
+      # trace_igr_csm (0xcb4): [31:31] vld, [30:16] rsv, [15:0] val
+      - { domain: 131, name: "trace_igr_csm[0]_vld"                 , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 131, name: "trace_igr_csm[0]_rsv"                 , bits: [30, 16], width: 15, desc: "reserved" }
+      - { domain: 131, name: "trace_igr_csm[0]_val"                 , bits: [15, 0], width: 16, desc: "入向 csm 值" }
+      - { domain: 132, name: "trace_igr_csm[1]_vld"                 , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 132, name: "trace_igr_csm[1]_rsv"                 , bits: [30, 16], width: 15, desc: "reserved" }
+      - { domain: 132, name: "trace_igr_csm[1]_val"                 , bits: [15, 0], width: 16, desc: "入向 csm 值" }
+      # trace_pedt2epm_ots (0xcbc): [31:22] rsv, [21:21] full, [20:20] copy_flag, [19:19] drop_fwd, [18:14] egr_port, [13:13] loop_pri, [12:12] err, [11:11] update_ts, [10:10] trunc_vld, [9:0] trunc_size
+      - { domain: 133, name: trace_pedt2epm_ots_rsv               , bits: [31, 22], width: 10, desc: "reserved" }
+      - { domain: 133, name: trace_pedt2epm_ots_full              , bits: [21, 21], width: 1 , desc: "满标志" }
+      - { domain: 133, name: trace_pedt2epm_ots_copy_flag         , bits: [20, 20], width: 1 , desc: "copy 标志" }
+      - { domain: 133, name: trace_pedt2epm_ots_drop_fwd          , bits: [19, 19], width: 1 , desc: "drop/forward" }
+      - { domain: 133, name: trace_pedt2epm_ots_egr_port          , bits: [18, 14], width: 5 , desc: "出向 port" }
+      - { domain: 133, name: trace_pedt2epm_ots_loop_pri          , bits: [13, 13], width: 1 , desc: "环路优先级" }
+      - { domain: 133, name: trace_pedt2epm_ots_err               , bits: [12, 12], width: 1 , desc: "错误" }
+      - { domain: 133, name: trace_pedt2epm_ots_update_ts         , bits: [11, 11], width: 1 , desc: "更新时戳" }
+      - { domain: 133, name: trace_pedt2epm_ots_trunc_vld         , bits: [10, 10], width: 1 , desc: "截断有效" }
+      - { domain: 133, name: trace_pedt2epm_ots_trunc_size        , bits: [9, 0], width: 10, desc: "截断长度" }
+      - { domain: 134, name: trace_pedt2epm_ptp_cmd               , bits: [31, 0], width: 32, desc: "ptp 命令值" }
+      # trace_pedt2epm_int_hdr (0xcd4): array total:8 step:0x4
+      - { domain: 135, name: "trace_pedt2epm_int_hdr[0]"            , bits: [31, 0], width: 32, desc: "内部 hdr" }
+      - { domain: 136, name: "trace_pedt2epm_int_hdr[1]"            , bits: [31, 0], width: 32, desc: "内部 hdr" }
+      - { domain: 137, name: "trace_pedt2epm_int_hdr[2]"            , bits: [31, 0], width: 32, desc: "内部 hdr" }
+      - { domain: 138, name: "trace_pedt2epm_int_hdr[3]"            , bits: [31, 0], width: 32, desc: "内部 hdr" }
+      - { domain: 139, name: "trace_pedt2epm_int_hdr[4]"            , bits: [31, 0], width: 32, desc: "内部 hdr" }
+      - { domain: 140, name: "trace_pedt2epm_int_hdr[5]"            , bits: [31, 0], width: 32, desc: "内部 hdr" }
+      - { domain: 141, name: "trace_pedt2epm_int_hdr[6]"            , bits: [31, 0], width: 32, desc: "内部 hdr" }
+      - { domain: 142, name: "trace_pedt2epm_int_hdr[7]"            , bits: [31, 0], width: 32, desc: "内部 hdr" }
+      # trace_pedt2epm_frm_hdr (0xcf4): array total:52 step:0x4
+      - { domain: 143, name: "trace_pedt2epm_frm_hdr[0]"            , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 144, name: "trace_pedt2epm_frm_hdr[1]"            , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 145, name: "trace_pedt2epm_frm_hdr[2]"            , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 146, name: "trace_pedt2epm_frm_hdr[3]"            , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 147, name: "trace_pedt2epm_frm_hdr[4]"            , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 148, name: "trace_pedt2epm_frm_hdr[5]"            , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 149, name: "trace_pedt2epm_frm_hdr[6]"            , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 150, name: "trace_pedt2epm_frm_hdr[7]"            , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 151, name: "trace_pedt2epm_frm_hdr[8]"            , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 152, name: "trace_pedt2epm_frm_hdr[9]"            , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 153, name: "trace_pedt2epm_frm_hdr[10]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 154, name: "trace_pedt2epm_frm_hdr[11]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 155, name: "trace_pedt2epm_frm_hdr[12]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 156, name: "trace_pedt2epm_frm_hdr[13]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 157, name: "trace_pedt2epm_frm_hdr[14]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 158, name: "trace_pedt2epm_frm_hdr[15]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 159, name: "trace_pedt2epm_frm_hdr[16]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 160, name: "trace_pedt2epm_frm_hdr[17]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 161, name: "trace_pedt2epm_frm_hdr[18]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 162, name: "trace_pedt2epm_frm_hdr[19]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 163, name: "trace_pedt2epm_frm_hdr[20]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 164, name: "trace_pedt2epm_frm_hdr[21]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 165, name: "trace_pedt2epm_frm_hdr[22]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 166, name: "trace_pedt2epm_frm_hdr[23]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 167, name: "trace_pedt2epm_frm_hdr[24]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 168, name: "trace_pedt2epm_frm_hdr[25]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 169, name: "trace_pedt2epm_frm_hdr[26]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 170, name: "trace_pedt2epm_frm_hdr[27]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 171, name: "trace_pedt2epm_frm_hdr[28]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 172, name: "trace_pedt2epm_frm_hdr[29]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 173, name: "trace_pedt2epm_frm_hdr[30]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 174, name: "trace_pedt2epm_frm_hdr[31]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 175, name: "trace_pedt2epm_frm_hdr[32]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 176, name: "trace_pedt2epm_frm_hdr[33]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 177, name: "trace_pedt2epm_frm_hdr[34]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 178, name: "trace_pedt2epm_frm_hdr[35]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 179, name: "trace_pedt2epm_frm_hdr[36]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 180, name: "trace_pedt2epm_frm_hdr[37]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 181, name: "trace_pedt2epm_frm_hdr[38]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 182, name: "trace_pedt2epm_frm_hdr[39]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 183, name: "trace_pedt2epm_frm_hdr[40]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 184, name: "trace_pedt2epm_frm_hdr[41]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 185, name: "trace_pedt2epm_frm_hdr[42]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 186, name: "trace_pedt2epm_frm_hdr[43]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 187, name: "trace_pedt2epm_frm_hdr[44]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 188, name: "trace_pedt2epm_frm_hdr[45]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 189, name: "trace_pedt2epm_frm_hdr[46]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 190, name: "trace_pedt2epm_frm_hdr[47]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 191, name: "trace_pedt2epm_frm_hdr[48]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 192, name: "trace_pedt2epm_frm_hdr[49]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 193, name: "trace_pedt2epm_frm_hdr[50]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      - { domain: 194, name: "trace_pedt2epm_frm_hdr[51]"           , bits: [31, 0], width: 32, desc: "帧 hdr" }
+      # dbg_pedt_cr_cnt (0xdc4): [31:5] rsv, [4:0] val0
+      - { domain: 195, name: dbg_pedt_cr_cnt_rsv                  , bits: [31, 5], width: 27, desc: "reserved" }
+      - { domain: 195, name: dbg_pedt_cr_cnt_val0                 , bits: [4, 0], width: 5 , desc: "信用值" }
+      # dbg_bp_his (0xdc8): [31:4] rsv, [3:3] meter2pedt2ppu, [2:2] epm2pedt2ppu, [1:1] meter2pedt, [0:0] epm2pedt
+      - { domain: 196, name: dbg_bp_his_rsv                       , bits: [31, 4], width: 28, desc: "reserved" }
+      - { domain: 196, name: dbg_bp_his_meter2pedt2ppu            , bits: [3, 3], width: 1 , desc: "meter2pedt2ppu 反压历史" }
+      - { domain: 196, name: dbg_bp_his_epm2pedt2ppu              , bits: [2, 2], width: 1 , desc: "epm2pedt2ppu 反压历史" }
+      - { domain: 196, name: dbg_bp_his_meter2pedt                , bits: [1, 1], width: 1 , desc: "meter2pedt 反压历史" }
+      - { domain: 196, name: dbg_bp_his_epm2pedt                  , bits: [0, 0], width: 1 , desc: "epm2pedt 反压历史" }
+      # dbg_bp_cur (0xdcc): [31:4] rsv, [3:3] meter2pedt2ppu, [2:2] epm2pedt2ppu, [1:1] meter2pedt, [0:0] epm2pedt
+      - { domain: 197, name: dbg_bp_cur_rsv                       , bits: [31, 4], width: 28, desc: "reserved" }
+      - { domain: 197, name: dbg_bp_cur_meter2pedt2ppu            , bits: [3, 3], width: 1 , desc: "meter2pedt2ppu 反压实时" }
+      - { domain: 197, name: dbg_bp_cur_epm2pedt2ppu              , bits: [2, 2], width: 1 , desc: "epm2pedt2ppu 反压实时" }
+      - { domain: 197, name: dbg_bp_cur_meter2pedt                , bits: [1, 1], width: 1 , desc: "meter2pedt 反压实时" }
+      - { domain: 197, name: dbg_bp_cur_epm2pedt                  , bits: [0, 0], width: 1 , desc: "epm2pedt 反压实时" }
+      # dbg_bp_set (0xdd0): [31:2] rsv, [1:1] meter2pedt, [0:0] epm2pedt
+      - { domain: 198, name: dbg_bp_set_rsv                       , bits: [31, 2], width: 30, desc: "reserved" }
+      - { domain: 198, name: dbg_bp_set_meter2pedt                , bits: [1, 1], width: 1 , desc: "强制拉起 meter2pedt 反压" }
+      - { domain: 198, name: dbg_bp_set_epm2pedt                  , bits: [0, 0], width: 1 , desc: "强制拉起 epm2pedt 反压" }
+      # dbg_bp_mask (0xdd4): [31:2] rsv, [1:1] meter2pedt, [0:0] epm2pedt
+      - { domain: 199, name: dbg_bp_mask_rsv                      , bits: [31, 2], width: 30, desc: "reserved" }
+      - { domain: 199, name: dbg_bp_mask_meter2pedt               , bits: [1, 1], width: 1 , desc: "强制忽略 meter2pedt 反压" }
+      - { domain: 199, name: dbg_bp_mask_epm2pedt                 , bits: [0, 0], width: 1 , desc: "强制忽略 epm2pedt 反压" }
+      # dbg_epm2pedt_bp_max_cnt (0xdd8): [31:31] clr, [30:0] rsv
+      - { domain: 200, name: dbg_epm2pedt_bp_max_cnt_clr          , bits: [31, 31], width: 1 , desc: "反压最大 cycle 清除" }
+      - { domain: 200, name: dbg_epm2pedt_bp_max_cnt_rsv          , bits: [30, 0], width: 31, desc: "reserved" }
+      # dbg_epm2pedt_bp_avg_prd (0xddc): [31:31] vld, [30:24] rsv, [23:0] val
+      - { domain: 201, name: dbg_epm2pedt_bp_avg_prd_vld          , bits: [31, 31], width: 1 , desc: "周期写有效" }
+      - { domain: 201, name: dbg_epm2pedt_bp_avg_prd_rsv          , bits: [30, 24], width: 7 , desc: "reserved" }
+      - { domain: 201, name: dbg_epm2pedt_bp_avg_prd_val          , bits: [23, 0], width: 24, desc: "反压平均时长统计周期" }
+      # dbg_epm2pedt_bp_avg_cnt (0xde0): [31:16] rsv, [15:0] val
+      - { domain: 202, name: dbg_epm2pedt_bp_avg_cnt_rsv          , bits: [31, 16], width: 16, desc: "reserved" }
+      - { domain: 202, name: dbg_epm2pedt_bp_avg_cnt_val          , bits: [15, 0], width: 16, desc: "周期内反压 cycle（OCR 一版显示 rw/ro，一版 ro/wo，待确认）" }
+      # dbg_port_pedt2epm_cfg (0xde4): [31:4] rsv, [3:0] port_id
+      - { domain: 203, name: dbg_port_pedt2epm_cfg_rsv            , bits: [31, 4], width: 28, desc: "reserved（OCR 位界 31/16 或 15/0 两版，待确认）" }
+      - { domain: 203, name: dbg_port_pedt2epm_cfg_port_id        , bits: [3, 0], width: 4 , desc: "选择统计的 port" }
+      # dbg_port_pedt2epm_cnt (0xde8): array total:2 step:0x4; [63:0] split into per-word u32 (lo..hi)
+      - { domain: 204, name: dbg_port_pedt2epm_cnt_lo             , bits: [31, 0], width: 32, desc: "计满翻转" }
+      - { domain: 205, name: dbg_port_pedt2epm_cnt_hi             , bits: [31, 0], width: 32, desc: "计满翻转" }
+      # zone_info_pfifo_thr (0xdf0): [31:9] rsv, [8:0] afull
+      - { domain: 206, name: zone_info_pfifo_thr_rsv              , bits: [31, 9], width: 23, desc: "reserved（OCR 一版显示 31/4，待确认）" }
+      - { domain: 206, name: zone_info_pfifo_thr_afull            , bits: [8, 0], width: 9 , desc: "将满阈值" }
+      # pedt_cr_thr (0xdf4): [31:5] rsv, [4:0] val
+      - { domain: 207, name: pedt_cr_thr_rsv                      , bits: [31, 5], width: 27, desc: "reserved" }
+      - { domain: 207, name: pedt_cr_thr_val                      , bits: [4, 0], width: 5 , desc: "信用阈值（OCR 一版显示 port_id[3:0]，待确认）" }
+      - { domain: 208, name: eco_reserved_rw0                     , bits: [31, 0], width: 32, desc: "ECO 预留（截图位域显示不完整，待确认）" }
+      - { domain: 209, name: eco_reserved_rw1                     , bits: [31, 0], width: 32, desc: "ECO 预留（截图位域显示不完整，待确认）" }
+      - { domain: 210, name: eco_reserved_ro0                     , bits: [31, 0], width: 32, desc: "ECO 预留（截图位域显示不完整，待确认）" }
+      - { domain: 211, name: eco_reserved_ro1                     , bits: [31, 0], width: 32, desc: "ECO 预留（截图位域显示不完整，待确认）" }
+      # trace_egr_csm (0xe08): [31:31] vld, [30:23] rsv, [22:16] ofs, [15:0] val
+      - { domain: 212, name: "trace_egr_csm[0]_vld"                 , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 212, name: "trace_egr_csm[0]_rsv"                 , bits: [30, 23], width: 8 , desc: "reserved" }
+      - { domain: 212, name: "trace_egr_csm[0]_ofs"                 , bits: [22, 16], width: 7 , desc: "offset" }
+      - { domain: 212, name: "trace_egr_csm[0]_val"                 , bits: [15, 0], width: 16, desc: "出向 csm 值" }
+      - { domain: 213, name: "trace_egr_csm[1]_vld"                 , bits: [31, 31], width: 1 , desc: "有效" }
+      - { domain: 213, name: "trace_egr_csm[1]_rsv"                 , bits: [30, 23], width: 8 , desc: "reserved" }
+      - { domain: 213, name: "trace_egr_csm[1]_ofs"                 , bits: [22, 16], width: 7 , desc: "offset" }
+      - { domain: 213, name: "trace_egr_csm[1]_val"                 , bits: [15, 0], width: 16, desc: "出向 csm 值" }
+
+# registers defined in dfx.md but not traced (address unconfirmed):
+#   trace_zone_der_idx (0xc): [31:16] rsv, [15:8] z1, [7:0] z0

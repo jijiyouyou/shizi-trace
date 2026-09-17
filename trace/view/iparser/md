@@ -1,0 +1,15 @@
+# Iparser Trace View
+
+- 格式：`tools/trace/iparser_trace.yaml`
+- 解码：`view/iparser/decode.py`（`parse_log` / `decode_segment` / `decode_paste`）
+- 板端脚本：`iparser_trace.cli` / 合并入口 `trace.cli` 的 ipp 段
+
+## 日志标记
+
+```text
+---- iparser start ----
+…寄存器 dump（可含 ---- dbg_xxx start/end ---- 与 0xADDR: 前缀）…
+---- iparser end ----
+```
+
+Viewer：顶部点 **iparser**，或粘贴区模块选 `iparser` / `auto` 解析含上述块的日志。
