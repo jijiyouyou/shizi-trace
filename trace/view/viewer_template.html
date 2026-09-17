@@ -236,6 +236,17 @@
       padding-left: 0.1rem;
       padding-right: 0.1rem;
     }
+    table.fields.stage-rcd {
+      table-layout: auto;
+      width: auto;
+    }
+    table.fields.stage-rcd th,
+    table.fields.stage-rcd td {
+      padding: 0.15rem 0.45rem;
+      white-space: nowrap;
+      text-align: left;
+    }
+    table.fields.stage-rcd td.rsv-cell { color: var(--rsv); }
     table.fields.compact-hdr td.c-hex {
       padding-left: 0.35rem;
       padding-right: 0.35rem;
@@ -1683,6 +1694,12 @@
       '<div class="bin-reveal">' + escapeHtml(bin) + "</div></td>";
   }
 
+  const STAGE_RCD_RE = /^(dbg_stg_(?:tcam_match_rcd2|info_rcd|done_rcd))_(\d+)_([A-Za-z0-9_]+)$/i;
+
+  function isStageRcdFieldName(name) {
+    return STAGE_RCD_RE.test(String(name || ""));
+  }
+
   function isHiddenDbgVectorFieldName(name) {
     return /^dbg_(?:hdr_info|psv_info|mpl_req_info|mpl_rsp_info)_(?:\d+)$/i.test(String(name || ""));
   }
@@ -1741,11 +1758,79 @@
     return { base, entries, count };
   }
 
+  function detectStageRcdMatrix(fields) {
+    if (!fields || !fields.length) return null;
+    let base = null;
+    const stages = new Map();
+    const cols = [];
+    const colSeen = new Set();
+    for (let i = 0; i < fields.length; i++) {
+      const f = fields[i];
+      const m = STAGE_RCD_RE.exec(String(f.name || ""));
+      if (!m) return null;
+      if (base === null) base = m[1];
+      else if (base !== m[1]) return null;
+      const stage = Number(m[2]);
+      const sub = m[3];
+      if (!stages.has(stage)) stages.set(stage, { stage, cells: new Map() });
+      stages.get(stage).cells.set(sub, f);
+      if (!colSeen.has(sub)) {
+        colSeen.add(sub);
+        cols.push({
+          sub,
+          bits: f.bits || "",
+          desc: String(f.desc || "").replace(/^stage\d+\s*/i, ""),
+          reserved: !!f.reserved,
+        });
+      }
+    }
+    const rows = Array.from(stages.values()).sort((a, b) => a.stage - b.stage);
+    if (!rows.length || !cols.length) return null;
+    return { base, cols, rows };
+  }
+
+  function renderStageRcdTable(fields, title) {
+    const info = detectStageRcdMatrix(fields || []);
+    if (!info) return renderFieldTable(fields || [], title);
+    let html = '<div class="meta">' + escapeHtml(title || info.base) + ' · ' + info.rows.length +
+      ' stage × ' + info.cols.length + ' 位域</div>';
+    html += '<table class="fields stage-rcd"><thead><tr><th>Stage</th>';
+    info.cols.forEach((c) => {
+      html += '<th title="' + escapeHtml(c.desc) + '">' + escapeHtml(c.sub) +
+        ' <span class="c-bits">' + escapeHtml(c.bits) + '</span></th>';
+    });
+    html += '</tr></thead><tbody>';
+    info.rows.forEach((row) => {
+      html += '<tr><td class="c-idx">' + row.stage + '</td>';
+      info.cols.forEach((c) => {
+        const f = row.cells.get(c.sub);
+        if (!f) {
+          html += '<td class="c-hex">—</td>';
+          return;
+        }
+        const cls = 'c-hex' + (f.reserved ? ' rsv-cell' : '');
+        html += '<td class="' + cls + '" title="' + escapeHtml(f.desc || '') + '">' +
+          escapeHtml(String(f.value_hex || '—')) +
+          ' <span class="c-dec">(' + escapeHtml(String(f.value_dec)) + ')</span></td>';
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    return html;
+  }
+
   function groupFieldsByBaseName(fields) {
     const groups = [];
     const map = new Map();
     (fields || []).forEach((f) => {
       const name = String(f.name || "");
+      const stage = STAGE_RCD_RE.exec(name);
+      if (stage) {
+        const sbase = stage[1];
+        if (!map.has(sbase)) map.set(sbase, { key: sbase, name: sbase, fields: [] });
+        map.get(sbase).fields.push(f);
+        return;
+      }
       const m = /^(dbg_(?:hdr_info|psv_info|mpl_req_info|mpl_rsp_info))_(\d+)$/i.exec(name);
       if (!m) {
         const key = name || "__single__" + groups.length;
@@ -1811,10 +1896,14 @@
   function renderFieldGroups(fields, fallbackName) {
     const domainGroups = groupFieldsByDomain(fields || []);
     const baseGroups = groupFieldsByBaseName(fields || []);
-    const arrayGroups = baseGroups.filter((g) => detectWordArray(g.fields || []));
+    const arrayGroups = baseGroups.filter(
+      (g) => detectWordArray(g.fields || []) || detectStageRcdMatrix(g.fields || [])
+    );
     const visibleNormalGroups = domainGroups.filter((g) => {
       const arr = g.fields || [];
-      return !arr.some((f) => isHiddenDbgVectorFieldName(String(f.name || ""))) && !detectWordArray(arr);
+      return !arr.some((f) => isHiddenDbgVectorFieldName(String(f.name || "")))
+        && !arr.some((f) => isStageRcdFieldName(String(f.name || "")))
+        && !detectWordArray(arr);
     });
     const groups = arrayGroups.length ? arrayGroups.concat(visibleNormalGroups) : domainGroups;
     if (!groups.length) {
@@ -1831,6 +1920,8 @@
       if (!vis.length) return;
       if (detectWordArray(vis)) {
         html += renderSeg(renderGroupSummary(name, vis), renderWordArrayTable(vis, name));
+      } else if (detectStageRcdMatrix(vis)) {
+        html += renderSeg(renderGroupSummary(name, vis), renderStageRcdTable(vis, name));
       } else {
         html += renderSeg(renderGroupSummary(name, vis), renderFieldTable(vis, ""));
       }
