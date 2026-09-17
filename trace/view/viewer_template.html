@@ -224,7 +224,7 @@
     table.fields.compact-hex th,
     table.fields.compact-hex td {
       padding: 0.1rem 0.2rem;
-      font-size: 0.7rem;
+      font-size: 0.78rem;
       line-height: 1.2;
       border-bottom: none;
       white-space: nowrap;
@@ -237,7 +237,6 @@
       padding-right: 0.1rem;
     }
     table.fields.compact-hdr td.c-hex {
-      font-size: 0.9rem;
       padding-left: 0.35rem;
       padding-right: 0.35rem;
     }
@@ -1685,7 +1684,7 @@
   }
 
   function isHiddenDbgVectorFieldName(name) {
-    return /^dbg_(?:hdr_info|psv_info|mpl_req_info)_(?:\d+)$/i.test(String(name || ""));
+    return /^dbg_(?:hdr_info|psv_info|mpl_req_info|mpl_rsp_info)_(?:\d+)$/i.test(String(name || ""));
   }
 
   function renderFieldTable(fields, title) {
@@ -1727,7 +1726,7 @@
     for (let i = 0; i < fields.length; i++) {
       const f = fields[i];
       const name = String(f.name || "");
-      const m = /^(dbg_(?:hdr_info|psv_info|mpl_req_info))_(\d+)$/i.exec(name);
+      const m = /^(dbg_(?:hdr_info|psv_info|mpl_req_info|mpl_rsp_info))_(\d+)$/i.exec(name);
       if (!m) return null;
       entries.push({ name: m[1], index: Number(m[2]), field: f });
     }
@@ -1747,7 +1746,7 @@
     const map = new Map();
     (fields || []).forEach((f) => {
       const name = String(f.name || "");
-      const m = /^(dbg_(?:hdr_info|psv_info|mpl_req_info))_(\d+)$/i.exec(name);
+      const m = /^(dbg_(?:hdr_info|psv_info|mpl_req_info|mpl_rsp_info))_(\d+)$/i.exec(name);
       if (!m) {
         const key = name || "__single__" + groups.length;
         if (!map.has(key)) map.set(key, { key, name: key, fields: [] });
@@ -1767,8 +1766,8 @@
     if (!info) return renderFieldTable(fields || [], title);
     const isHdr = /^dbg_hdr_info$/i.test(String(title || info.base || ''));
     const isPsv = /^dbg_psv_info$/i.test(String(title || info.base || ''));
-    const isMplReq = /^dbg_mpl_req_info$/i.test(String(title || info.base || ''));
-    const rowSize = isHdr ? 2 : isMplReq ? 6 : 8;
+    const isMplInfo = /^dbg_mpl_(?:req|rsp)_info$/i.test(String(title || info.base || ''));
+    const rowSize = isHdr ? 2 : isMplInfo ? 6 : 8;
     function renderU32Bytes(entry, littleEndian, bytesSeparated) {
       const f = entry && entry.field;
       if (!f) return '—';
@@ -1796,7 +1795,7 @@
           return;
         }
         const value = isHdr ? renderU32Bytes(entry, false, true)
-          : isMplReq ? renderU32Bytes(entry, false, false)
+          : isMplInfo ? renderU32Bytes(entry, false, false)
           : renderU32Bytes(entry, true, false);
         html += '<td class="c-hex compact">' + escapeHtml(value) + '</td>';
       });
