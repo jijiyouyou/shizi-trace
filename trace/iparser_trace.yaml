@@ -85,7 +85,11 @@ traces:
       - { domain: 54, name: dbg_mpl_rsp_info_7,  bits: [31, 0], width: 32, desc: "mpl rsp info word 7" }
       - { domain: 55, name: dbg_mpl_rsp_info_8,  bits: [31, 0], width: 32, desc: "mpl rsp info word 8" }
 
-      - { domain: 56, name: dbg_mpl_rsp_info1, bits: [31, 0], width: 32, desc: "mpl 响应信息 1" }
+      # dbg_mpl_rsp_info1 (0x0508): [31:10] rsv, [9:6] hw_err, [5:4] hit, [3:0] res_vld
+      - { domain: 56, name: dbg_mpl_rsp_info1_rsv, bits: [31, 10], width: 22, desc: "reserved" }
+      - { domain: 56, name: dbg_mpl_rsp_info1_hw_err, bits: [9, 6], width: 4, desc: "2bit ecc err 标志" }
+      - { domain: 56, name: dbg_mpl_rsp_info1_hit, bits: [5, 4], width: 2, desc: "hit 标志" }
+      - { domain: 56, name: dbg_mpl_rsp_info1_res_vld, bits: [3, 0], width: 4, desc: "mpl 返回的三个读请求有效信号" }
 
       # dbg_stg_tcam_match_rcd0: 6 u32 words (0x050c .. 0x0523)
       - { domain: 57, name: dbg_stg_tcam_match_rcd0_0, bits: [31, 0], width: 32, desc: "stg tcam match record 0 word 0" }
@@ -103,29 +107,110 @@ traces:
       - { domain: 67, name: dbg_stg_tcam_match_rcd1_4, bits: [31, 0], width: 32, desc: "stg tcam match record 1 word 4" }
       - { domain: 68, name: dbg_stg_tcam_match_rcd1_5, bits: [31, 0], width: 32, desc: "stg tcam match record 1 word 5" }
 
-      # dbg_stg_tcam_match_rcd2: 2 u32 words (0x053c .. 0x0543)
-      - { domain: 69, name: dbg_stg_tcam_match_rcd2_0, bits: [31, 0], width: 32, desc: "stg tcam match record 2 word 0" }
-      - { domain: 70, name: dbg_stg_tcam_match_rcd2_1, bits: [31, 0], width: 32, desc: "stg tcam match record 2 word 1" }
+      # dbg_stg_tcam_match_rcd2: 6 stages × u32 (0x053c .. 0x0553)：[31:23] rsv, [22] tcam_hit, [21:16] tcam_idx, [15:0] key
+      - { domain: 69, name: dbg_stg_tcam_match_rcd2_0_rsv, bits: [31, 23], width: 9, desc: "stage0 reserved" }
+      - { domain: 69, name: dbg_stg_tcam_match_rcd2_0_tcam_hit, bits: [22, 22], width: 1, desc: "stage0 tcam hit 标志" }
+      - { domain: 69, name: dbg_stg_tcam_match_rcd2_0_tcam_idx, bits: [21, 16], width: 6, desc: "stage0 tcam hit 索引" }
+      - { domain: 69, name: dbg_stg_tcam_match_rcd2_0_key, bits: [15, 0], width: 16, desc: "stage0 tcam key[79:64]" }
 
-      # dbg_stg_info_rcd: 10 u32 words (0x0544 .. 0x056b)
-      - { domain: 71, name: dbg_stg_info_rcd_0,  bits: [31, 0], width: 32, desc: "stg info record word 0" }
-      - { domain: 72, name: dbg_stg_info_rcd_1,  bits: [31, 0], width: 32, desc: "stg info record word 1" }
-      - { domain: 73, name: dbg_stg_info_rcd_2,  bits: [31, 0], width: 32, desc: "stg info record word 2" }
-      - { domain: 74, name: dbg_stg_info_rcd_3,  bits: [31, 0], width: 32, desc: "stg info record word 3" }
-      - { domain: 75, name: dbg_stg_info_rcd_4,  bits: [31, 0], width: 32, desc: "stg info record word 4" }
-      - { domain: 76, name: dbg_stg_info_rcd_5,  bits: [31, 0], width: 32, desc: "stg info record word 5" }
-      - { domain: 77, name: dbg_stg_info_rcd_6,  bits: [31, 0], width: 32, desc: "stg info record word 6" }
-      - { domain: 78, name: dbg_stg_info_rcd_7,  bits: [31, 0], width: 32, desc: "stg info record word 7" }
-      - { domain: 79, name: dbg_stg_info_rcd_8,  bits: [31, 0], width: 32, desc: "stg info record word 8" }
-      - { domain: 80, name: dbg_stg_info_rcd_9,  bits: [31, 0], width: 32, desc: "stg info record word 9" }
+      - { domain: 70, name: dbg_stg_tcam_match_rcd2_1_rsv, bits: [31, 23], width: 9, desc: "stage1 reserved" }
+      - { domain: 70, name: dbg_stg_tcam_match_rcd2_1_tcam_hit, bits: [22, 22], width: 1, desc: "stage1 tcam hit 标志" }
+      - { domain: 70, name: dbg_stg_tcam_match_rcd2_1_tcam_idx, bits: [21, 16], width: 6, desc: "stage1 tcam hit 索引" }
+      - { domain: 70, name: dbg_stg_tcam_match_rcd2_1_key, bits: [15, 0], width: 16, desc: "stage1 tcam key[79:64]" }
 
-      # dbg_stg_done_rcd: 6 u32 words (0x056c .. 0x0583)
-      - { domain: 81, name: dbg_stg_done_rcd_0, bits: [31, 0], width: 32, desc: "stg done record word 0" }
-      - { domain: 82, name: dbg_stg_done_rcd_1, bits: [31, 0], width: 32, desc: "stg done record word 1" }
-      - { domain: 83, name: dbg_stg_done_rcd_2, bits: [31, 0], width: 32, desc: "stg done record word 2" }
-      - { domain: 84, name: dbg_stg_done_rcd_3, bits: [31, 0], width: 32, desc: "stg done record word 3" }
-      - { domain: 85, name: dbg_stg_done_rcd_4, bits: [31, 0], width: 32, desc: "stg done record word 4" }
-      - { domain: 86, name: dbg_stg_done_rcd_5, bits: [31, 0], width: 32, desc: "stg done record word 5" }
+      - { domain: 71, name: dbg_stg_tcam_match_rcd2_2_rsv, bits: [31, 23], width: 9, desc: "stage2 reserved" }
+      - { domain: 71, name: dbg_stg_tcam_match_rcd2_2_tcam_hit, bits: [22, 22], width: 1, desc: "stage2 tcam hit 标志" }
+      - { domain: 71, name: dbg_stg_tcam_match_rcd2_2_tcam_idx, bits: [21, 16], width: 6, desc: "stage2 tcam hit 索引" }
+      - { domain: 71, name: dbg_stg_tcam_match_rcd2_2_key, bits: [15, 0], width: 16, desc: "stage2 tcam key[79:64]" }
+
+      - { domain: 72, name: dbg_stg_tcam_match_rcd2_3_rsv, bits: [31, 23], width: 9, desc: "stage3 reserved" }
+      - { domain: 72, name: dbg_stg_tcam_match_rcd2_3_tcam_hit, bits: [22, 22], width: 1, desc: "stage3 tcam hit 标志" }
+      - { domain: 72, name: dbg_stg_tcam_match_rcd2_3_tcam_idx, bits: [21, 16], width: 6, desc: "stage3 tcam hit 索引" }
+      - { domain: 72, name: dbg_stg_tcam_match_rcd2_3_key, bits: [15, 0], width: 16, desc: "stage3 tcam key[79:64]" }
+
+      - { domain: 73, name: dbg_stg_tcam_match_rcd2_4_rsv, bits: [31, 23], width: 9, desc: "stage4 reserved" }
+      - { domain: 73, name: dbg_stg_tcam_match_rcd2_4_tcam_hit, bits: [22, 22], width: 1, desc: "stage4 tcam hit 标志" }
+      - { domain: 73, name: dbg_stg_tcam_match_rcd2_4_tcam_idx, bits: [21, 16], width: 6, desc: "stage4 tcam hit 索引" }
+      - { domain: 73, name: dbg_stg_tcam_match_rcd2_4_key, bits: [15, 0], width: 16, desc: "stage4 tcam key[79:64]" }
+
+      - { domain: 74, name: dbg_stg_tcam_match_rcd2_5_rsv, bits: [31, 23], width: 9, desc: "stage5 reserved" }
+      - { domain: 74, name: dbg_stg_tcam_match_rcd2_5_tcam_hit, bits: [22, 22], width: 1, desc: "stage5 tcam hit 标志" }
+      - { domain: 74, name: dbg_stg_tcam_match_rcd2_5_tcam_idx, bits: [21, 16], width: 6, desc: "stage5 tcam hit 索引" }
+      - { domain: 74, name: dbg_stg_tcam_match_rcd2_5_key, bits: [15, 0], width: 16, desc: "stage5 tcam key[79:64]" }
+
+      # dbg_stg_info_rcd: 6 stages × u32 (0x0554 .. 0x056b)：[31:21] rsv, [20:13] alu, [12] nstg_fb_valid, [11:6] nstg_shift, [5:0] nstg_cur_offset
+      - { domain: 75, name: dbg_stg_info_rcd_0_rsv, bits: [31, 21], width: 11, desc: "stage0 reserved" }
+      - { domain: 75, name: dbg_stg_info_rcd_0_alu, bits: [20, 13], width: 8, desc: "stage0 当前 stage 计算的 alu 结果" }
+      - { domain: 75, name: dbg_stg_info_rcd_0_nstg_fb_valid, bits: [12, 12], width: 1, desc: "stage0 下一个 stage 的 fallback 标志" }
+      - { domain: 75, name: dbg_stg_info_rcd_0_nstg_shift, bits: [11, 6], width: 6, desc: "stage0 下一个 stage 的 shift" }
+      - { domain: 75, name: dbg_stg_info_rcd_0_nstg_cur_offset, bits: [5, 0], width: 6, desc: "stage0 下一个 stage 的 cur_offset" }
+
+      - { domain: 76, name: dbg_stg_info_rcd_1_rsv, bits: [31, 21], width: 11, desc: "stage1 reserved" }
+      - { domain: 76, name: dbg_stg_info_rcd_1_alu, bits: [20, 13], width: 8, desc: "stage1 当前 stage 计算的 alu 结果" }
+      - { domain: 76, name: dbg_stg_info_rcd_1_nstg_fb_valid, bits: [12, 12], width: 1, desc: "stage1 下一个 stage 的 fallback 标志" }
+      - { domain: 76, name: dbg_stg_info_rcd_1_nstg_shift, bits: [11, 6], width: 6, desc: "stage1 下一个 stage 的 shift" }
+      - { domain: 76, name: dbg_stg_info_rcd_1_nstg_cur_offset, bits: [5, 0], width: 6, desc: "stage1 下一个 stage 的 cur_offset" }
+
+      - { domain: 77, name: dbg_stg_info_rcd_2_rsv, bits: [31, 21], width: 11, desc: "stage2 reserved" }
+      - { domain: 77, name: dbg_stg_info_rcd_2_alu, bits: [20, 13], width: 8, desc: "stage2 当前 stage 计算的 alu 结果" }
+      - { domain: 77, name: dbg_stg_info_rcd_2_nstg_fb_valid, bits: [12, 12], width: 1, desc: "stage2 下一个 stage 的 fallback 标志" }
+      - { domain: 77, name: dbg_stg_info_rcd_2_nstg_shift, bits: [11, 6], width: 6, desc: "stage2 下一个 stage 的 shift" }
+      - { domain: 77, name: dbg_stg_info_rcd_2_nstg_cur_offset, bits: [5, 0], width: 6, desc: "stage2 下一个 stage 的 cur_offset" }
+
+      - { domain: 78, name: dbg_stg_info_rcd_3_rsv, bits: [31, 21], width: 11, desc: "stage3 reserved" }
+      - { domain: 78, name: dbg_stg_info_rcd_3_alu, bits: [20, 13], width: 8, desc: "stage3 当前 stage 计算的 alu 结果" }
+      - { domain: 78, name: dbg_stg_info_rcd_3_nstg_fb_valid, bits: [12, 12], width: 1, desc: "stage3 下一个 stage 的 fallback 标志" }
+      - { domain: 78, name: dbg_stg_info_rcd_3_nstg_shift, bits: [11, 6], width: 6, desc: "stage3 下一个 stage 的 shift" }
+      - { domain: 78, name: dbg_stg_info_rcd_3_nstg_cur_offset, bits: [5, 0], width: 6, desc: "stage3 下一个 stage 的 cur_offset" }
+
+      - { domain: 79, name: dbg_stg_info_rcd_4_rsv, bits: [31, 21], width: 11, desc: "stage4 reserved" }
+      - { domain: 79, name: dbg_stg_info_rcd_4_alu, bits: [20, 13], width: 8, desc: "stage4 当前 stage 计算的 alu 结果" }
+      - { domain: 79, name: dbg_stg_info_rcd_4_nstg_fb_valid, bits: [12, 12], width: 1, desc: "stage4 下一个 stage 的 fallback 标志" }
+      - { domain: 79, name: dbg_stg_info_rcd_4_nstg_shift, bits: [11, 6], width: 6, desc: "stage4 下一个 stage 的 shift" }
+      - { domain: 79, name: dbg_stg_info_rcd_4_nstg_cur_offset, bits: [5, 0], width: 6, desc: "stage4 下一个 stage 的 cur_offset" }
+
+      - { domain: 80, name: dbg_stg_info_rcd_5_rsv, bits: [31, 21], width: 11, desc: "stage5 reserved" }
+      - { domain: 80, name: dbg_stg_info_rcd_5_alu, bits: [20, 13], width: 8, desc: "stage5 当前 stage 计算的 alu 结果" }
+      - { domain: 80, name: dbg_stg_info_rcd_5_nstg_fb_valid, bits: [12, 12], width: 1, desc: "stage5 下一个 stage 的 fallback 标志" }
+      - { domain: 80, name: dbg_stg_info_rcd_5_nstg_shift, bits: [11, 6], width: 6, desc: "stage5 下一个 stage 的 shift" }
+      - { domain: 80, name: dbg_stg_info_rcd_5_nstg_cur_offset, bits: [5, 0], width: 6, desc: "stage5 下一个 stage 的 cur_offset" }
+
+      # dbg_stg_done_rcd: 6 stages × u32 (0x056c .. 0x0583)：[31:4] rsv, [3] len_err, [2] bad_shift, [1] tcam_err, [0] adt_stop
+      - { domain: 81, name: dbg_stg_done_rcd_0_rsv, bits: [31, 4], width: 28, desc: "stage0 reserved" }
+      - { domain: 81, name: dbg_stg_done_rcd_0_len_err, bits: [3, 3], width: 1, desc: "stage0 len error" }
+      - { domain: 81, name: dbg_stg_done_rcd_0_bad_shift, bits: [2, 2], width: 1, desc: "stage0 bad shift error" }
+      - { domain: 81, name: dbg_stg_done_rcd_0_tcam_err, bits: [1, 1], width: 1, desc: "stage0 tcam miss error" }
+      - { domain: 81, name: dbg_stg_done_rcd_0_adt_stop, bits: [0, 0], width: 1, desc: "stage0 adt stop flag" }
+
+      - { domain: 82, name: dbg_stg_done_rcd_1_rsv, bits: [31, 4], width: 28, desc: "stage1 reserved" }
+      - { domain: 82, name: dbg_stg_done_rcd_1_len_err, bits: [3, 3], width: 1, desc: "stage1 len error" }
+      - { domain: 82, name: dbg_stg_done_rcd_1_bad_shift, bits: [2, 2], width: 1, desc: "stage1 bad shift error" }
+      - { domain: 82, name: dbg_stg_done_rcd_1_tcam_err, bits: [1, 1], width: 1, desc: "stage1 tcam miss error" }
+      - { domain: 82, name: dbg_stg_done_rcd_1_adt_stop, bits: [0, 0], width: 1, desc: "stage1 adt stop flag" }
+
+      - { domain: 83, name: dbg_stg_done_rcd_2_rsv, bits: [31, 4], width: 28, desc: "stage2 reserved" }
+      - { domain: 83, name: dbg_stg_done_rcd_2_len_err, bits: [3, 3], width: 1, desc: "stage2 len error" }
+      - { domain: 83, name: dbg_stg_done_rcd_2_bad_shift, bits: [2, 2], width: 1, desc: "stage2 bad shift error" }
+      - { domain: 83, name: dbg_stg_done_rcd_2_tcam_err, bits: [1, 1], width: 1, desc: "stage2 tcam miss error" }
+      - { domain: 83, name: dbg_stg_done_rcd_2_adt_stop, bits: [0, 0], width: 1, desc: "stage2 adt stop flag" }
+
+      - { domain: 84, name: dbg_stg_done_rcd_3_rsv, bits: [31, 4], width: 28, desc: "stage3 reserved" }
+      - { domain: 84, name: dbg_stg_done_rcd_3_len_err, bits: [3, 3], width: 1, desc: "stage3 len error" }
+      - { domain: 84, name: dbg_stg_done_rcd_3_bad_shift, bits: [2, 2], width: 1, desc: "stage3 bad shift error" }
+      - { domain: 84, name: dbg_stg_done_rcd_3_tcam_err, bits: [1, 1], width: 1, desc: "stage3 tcam miss error" }
+      - { domain: 84, name: dbg_stg_done_rcd_3_adt_stop, bits: [0, 0], width: 1, desc: "stage3 adt stop flag" }
+
+      - { domain: 85, name: dbg_stg_done_rcd_4_rsv, bits: [31, 4], width: 28, desc: "stage4 reserved" }
+      - { domain: 85, name: dbg_stg_done_rcd_4_len_err, bits: [3, 3], width: 1, desc: "stage4 len error" }
+      - { domain: 85, name: dbg_stg_done_rcd_4_bad_shift, bits: [2, 2], width: 1, desc: "stage4 bad shift error" }
+      - { domain: 85, name: dbg_stg_done_rcd_4_tcam_err, bits: [1, 1], width: 1, desc: "stage4 tcam miss error" }
+      - { domain: 85, name: dbg_stg_done_rcd_4_adt_stop, bits: [0, 0], width: 1, desc: "stage4 adt stop flag" }
+
+      - { domain: 86, name: dbg_stg_done_rcd_5_rsv, bits: [31, 4], width: 28, desc: "stage5 reserved" }
+      - { domain: 86, name: dbg_stg_done_rcd_5_len_err, bits: [3, 3], width: 1, desc: "stage5 len error" }
+      - { domain: 86, name: dbg_stg_done_rcd_5_bad_shift, bits: [2, 2], width: 1, desc: "stage5 bad shift error" }
+      - { domain: 86, name: dbg_stg_done_rcd_5_tcam_err, bits: [1, 1], width: 1, desc: "stage5 tcam miss error" }
+      - { domain: 86, name: dbg_stg_done_rcd_5_adt_stop, bits: [0, 0], width: 1, desc: "stage5 adt stop flag" }
 
       # dbg_exm_info0 (0x0584): [31:16] match_key, [15:0] ral_key
       - { domain: 87, name: dbg_exm_info0_match_key, bits: [31, 16], width: 16, desc: "match key" }
